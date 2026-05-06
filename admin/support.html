@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Inbox - NBA Lokoja Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel">
+          <div class="panel-head"><h3>User Support Inquiries</h3></div>
+          <div class="panel-body">
+            <div id="ticketList"></div>
+            <div id="ticketDetail" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <h4 id="ticketSubject"></h4>
+                <button id="backToList" class="btn btn-outline btn-sm">← Back to List</button>
+              </div>
+              <div id="ticketInfo" style="margin-bottom:1.5rem;padding:1rem;background:var(--off-white);border-radius:10px;"></div>
+              <div id="ticketResponses" style="margin-bottom:1.5rem;"></div>
+              <div class="form-group">
+                <label class="form-label">Add Response</label>
+                <textarea id="responseText" class="form-control" rows="4" placeholder="Type your response here..."></textarea>
+                <button id="submitResponse" class="btn btn-primary" style="margin-top:0.5rem;">Submit Response</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin-shared.js"></script>
+  <script>
+    renderAdmin('support', 'Support Inbox');
+    function esc(v){return String(v||'').replace(/[&<>\"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));}
+
+    let currentTicketId = null;
+
+    async function loadAdminTickets(){
+      const holder = document.getElementById('ticketList');
+      const { data, error } = await NBADB.listSupportTickets();
+      if (error) { holder.innerHTML = '<div class="alert alert-error">Unable to load support tickets.</div>'; return; }
+      const rows = Array.isArray(data) ? data : [];
+      if (!rows.length) { holder.innerHTML = '<div class="card" style="padding:1rem;">No support inquiries yet.</div>'; return; }
+      holder.innerHTML = rows.map((t)=>`<article style="padding:0.9rem;background:var(--off-white);border-radius:10px;margin-bottom:0.7rem;cursor:pointer;" onclick="viewTicket('${t.id}')"><div style="display:flex;justify-content:space-between;gap:1rem;"><div><h4 style="margin:0 0 0.3rem 0;">${esc(t.subject)}</h4><p style="margin:0;font-size:0.88rem;">${esc(t.description || '')}</p><small style="color:var(--gray);">${esc(t.category||'general')} • ${esc(t.priority||'normal')} • ${esc(t.status||'open')}</small></div><div><select data-id="${t.id}" class="form-control" style="min-width:140px;"><option ${t.status==='open'?'selected':''}>open</option><option ${t.status==='in_progress'?'selected':''}>in_progress</option><option ${t.status==='resolved'?'selected':''}>resolved</option></select></div></div></article>`).join('');
+      holder.querySelectorAll('select[data-id]').forEach((s)=>{
+        s.addEventListener('change', async (e)=>{
+          e.stopPropagation();
+          const { error: updateError } = await NBADB.updateSupportTicket(s.getAttribute('data-id'), { status: s.value, resolved_at: s.value === 'resolved' ? new Date().toISOString() : null });
+          if (updateError) showToast(updateError.message || 'Failed to update ticket.', 'error');
+          else showToast('Ticket updated.', 'success');
+        });
+      });
+    }
+
+    async function viewTicket(ticketId) {
+      currentTicketId = ticketId;
+      const { data: ticket, error: ticketError } = await NBADB.listSupportTickets();
+      if (ticketError) {
+        showToast('Failed to load ticket details.', 'error');
+        return;
+      }
+      const ticketData = ticket.find(t => t.id === ticketId);
+      if (!ticketData) {
+        showToast('Ticket not found.', 'error');
+        return;
+      }
+
+      document.getElementById('ticketSubject').textContent = esc(ticketData.subject);
+      document.getElementById('ticketInfo').innerHTML = `
+        <strong>From:</strong> ${esc(ticketData.members?.full_name || 'Unknown')}<br>
+        <strong>Category:</strong> ${esc(ticketData.category || 'general')}<br>
+        <strong>Priority:</strong> ${esc(ticketData.priority || 'normal')}<br>
+        <strong>Status:</strong> ${esc(ticketData.status || 'open')}<br>
+        <strong>Created:</strong> ${new Date(ticketData.created_at).toLocaleString()}<br><br>
+        <strong>Description:</strong><br>${esc(ticketData.description || '')}
+      `;
+
+      await loadTicketResponses(ticketId);
+      document.getElementById('ticketList').style.display = 'none';
+      document.getElementById('ticketDetail').style.display = 'block';
+    }
+
+    async function loadTicketResponses(ticketId) {
+      const { data, error } = await NBADB.listTicketResponses(ticketId);
+      if (error) {
+        document.getElementById('ticketResponses').innerHTML = '<div class="alert alert-error">Failed to load responses.</div>';
+        return;
+      }
+      const responses = Array.isArray(data) ? data : [];
+      if (!responses.length) {
+        document.getElementById('ticketResponses').innerHTML = '<p style="color:var(--gray);font-style:italic;">No responses yet.</p>';
+        return;
+      }
+      document.getElementById('ticketResponses').innerHTML = responses.map(r => `
+        <div style="padding:0.8rem;margin-bottom:0.5rem;background:white;border-radius:8px;border-left:4px solid ${r.is_admin ? 'var(--gold)' : 'var(--navy-light)'};">
+          <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;">
+            <strong>${esc(r.responder?.full_name || 'Unknown')}</strong>
+            <small style="color:var(--gray);">${new Date(r.created_at).toLocaleString()}</small>
+          </div>
+          <div>${esc(r.response)}</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('backToList').addEventListener('click', () => {
+      document.getElementById('ticketDetail').style.display = 'none';
+      document.getElementById('ticketList').style.display = 'block';
+      currentTicketId = null;
+    });
+
+    document.getElementById('submitResponse').addEventListener('click', async () => {
+      if (!currentTicketId) return;
+      const responseText = document.getElementById('responseText').value.trim();
+      if (!responseText) {
+        showToast('Please enter a response.', 'error');
+        return;
+      }
+
+      const session = await NBAAuth.getSession();
+      const user = session?.data?.session?.user;
+      const { error } = await NBADB.createTicketResponse(currentTicketId, responseText, user.id, true);
+      if (error) {
+        showToast('Failed to submit response.', 'error');
+        return;
+      }
+
+      document.getElementById('responseText').value = '';
+      await loadTicketResponses(currentTicketId);
+      showToast('Response submitted successfully.', 'success');
+    });
+
+    loadAdminTickets();
+  </script>
+</body>
+</html>

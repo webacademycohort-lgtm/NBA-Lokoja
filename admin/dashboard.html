@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+
+        <div class="welcome-banner" style="background:linear-gradient(135deg,var(--charcoal),var(--navy-dark));">
+          <h2>Branch Admin Console</h2>
+          <p>Real-time overview of branch operations, membership, finance and engagement.</p>
+        </div>
+
+          <div class="stats-grid">
+          <div class="stat-card navy"><div class="stat-ico"><i class="fa-solid fa-users" aria-hidden="true"></i></div><span class="lbl">Total Members</span><span class="num" id="statTotalMembers">0</span><span class="delta">Live from database</span></div>
+          <div class="stat-card green"><div class="stat-ico"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></div><span class="lbl">Active Members</span><span class="num" id="statActiveMembers">0</span><span class="delta">Current approved profiles</span></div>
+          <div class="stat-card gold"><div class="stat-ico"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></div><span class="lbl">Pending Applications</span><span class="num" id="statPendingMembers">0</span><span class="delta down">Needs review</span></div>
+          <div class="stat-card red"><div class="stat-ico"><i class="fa-solid fa-money-bill-wave" aria-hidden="true"></i></div><span class="lbl">Revenue (YTD)</span><span class="num" id="statRevenueYtd" style="font-size:1.5rem;">N0.00</span><span class="delta">Confirmed payments this year</span></div>
+        </div>
+
+        <div class="panel-grid">
+          <div>
+            <div class="panel">
+              <div class="panel-head"><h3>Membership Growth</h3>
+                <select class="form-control" style="width:140px;padding:0.45rem 0.75rem;font-size:0.85rem;"><option>Last 12 months</option></select>
+              </div>
+              <div class="panel-body">
+                <div id="growthList" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head"><h3>Recent Applications</h3><a href="approvals.html" class="btn btn-outline btn-sm">View All</a></div>
+              <div class="panel-body" style="padding:0;">
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead><tr><th>Name</th><th>SCN</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody id="pendingApplicationsBody">
+                      <tr><td colspan="5" style="color:var(--gray);">Loading pending members...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="panel">
+              <div class="panel-head"><h3>Quick Actions</h3></div>
+              <div class="panel-body" style="display:flex;flex-direction:column;gap:0.6rem;">
+                <a href="news.html" class="btn btn-primary"><i class="fa-regular fa-newspaper" aria-hidden="true"></i> Publish Announcement</a>
+                <a href="events.html" class="btn btn-outline"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Create Event</a>
+                <a href="communications.html" class="btn btn-outline"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Send Bulk Email</a>
+                <a href="reports.html" class="btn btn-outline"><i class="fa-solid fa-file-lines" aria-hidden="true"></i> Generate Report</a>
+                <a href="documents.html" class="btn btn-outline"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Upload Document</a>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h3>Member Distribution</h3></div>
+              <div class="panel-body">
+                <div id="distributionList" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h3>Admin Notifications</h3></div>
+              <div class="panel-body" id="adminNotificationList">
+                <p style="margin:0;color:var(--gray);">Loading notifications...</p>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h3>System Health</h3></div>
+              <div class="panel-body">
+                <div style="display:flex;flex-direction:column;gap:0.6rem;font-size:0.88rem;">
+                  <div style="display:flex;justify-content:space-between;"><span><i class="fa-solid fa-circle" aria-hidden="true" style="color:var(--green);"></i> Database</span><strong style="color:var(--green);">Healthy</strong></div>
+                  <div style="display:flex;justify-content:space-between;"><span><i class="fa-solid fa-circle" aria-hidden="true" style="color:var(--green);"></i> Storage</span><strong style="color:var(--green);">68% used</strong></div>
+                  <div style="display:flex;justify-content:space-between;"><span><i class="fa-solid fa-circle" aria-hidden="true" style="color:var(--green);"></i> Auth Service</span><strong style="color:var(--green);">Online</strong></div>
+                  <div style="display:flex;justify-content:space-between;"><span><i class="fa-solid fa-circle" aria-hidden="true" style="color:var(--green);"></i> Realtime</span><strong style="color:var(--green);">Connected</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin-shared.js"></script>
+  <script>
+    renderAdmin('dashboard', 'Admin Dashboard');
+    function esc(v){return String(v||'').replace(/[&<>"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+    function formatMoney(value) {
+      try { return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 2 }).format(Number(value || 0)); }
+      catch (e) { return `N${Number(value || 0).toFixed(2)}`; }
+    }
+    async function loadDashboardStats() {
+      const { data, error } = await NBADB.getAdminDashboardStats();
+      if (error || !data) return;
+      document.getElementById('statTotalMembers').textContent = String(data.totalMembers || 0);
+      document.getElementById('statActiveMembers').textContent = String(data.activeMembers || 0);
+      document.getElementById('statPendingMembers').textContent = String(data.pendingMembers || 0);
+      document.getElementById('statRevenueYtd').textContent = formatMoney(data.revenueYtd || 0);
+    }
+    async function loadAdminNotifications() {
+      const box = document.getElementById('adminNotificationList');
+      const { data, error } = await NBADB.listAdminNotifications();
+      if (error) {
+        box.innerHTML = '<div class="alert alert-error">Unable to load notifications.</div>';
+        return;
+      }
+      const rows = Array.isArray(data) ? data : [];
+      if (!rows.length) {
+        box.innerHTML = '<p style="margin:0;color:var(--gray);">No notifications yet.</p>';
+        return;
+      }
+      box.innerHTML = rows.slice(0, 8).map((n) => `
+        <div style="padding:0.6rem 0;border-bottom:1px solid var(--light-gray);">
+          <strong style="display:block;font-size:0.88rem;">${esc(n.title)}</strong>
+          <span style="font-size:0.82rem;color:var(--charcoal-light);">${esc(n.body || '')}</span>
+        </div>
+      `).join('');
+    }
+    async function loadPendingApplications() {
+      const body = document.getElementById('pendingApplicationsBody');
+      const { data, error } = await NBADB.listMembers({ status: 'pending' });
+      if (error) {
+        body.innerHTML = '<tr><td colspan="5">Unable to load pending members.</td></tr>';
+        return;
+      }
+      const rows = (Array.isArray(data) ? data : []).slice(0, 8);
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="5" style="color:var(--gray);">No pending registrations.</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map((m) => `
+        <tr>
+          <td>${esc(m.full_name || 'Unnamed Member')}</td>
+          <td>${esc(m.scn_number || '-')}</td>
+          <td>${m.created_at ? new Date(m.created_at).toLocaleString() : '-'}</td>
+          <td><span class="badge badge-pending">Pending</span></td>
+          <td><a href="approvals.html" class="btn btn-primary btn-sm">Review</a></td>
+        </tr>
+      `).join('');
+    }
+    async function loadMembershipGrowth() {
+      const box = document.getElementById('growthList');
+      const { data, error } = await NBADB.getMembershipGrowth(12);
+      if (error) {
+        box.innerHTML = '<p style="margin:0;color:var(--gray);">Unable to load growth data.</p>';
+        return;
+      }
+      const rows = Array.isArray(data) ? data : [];
+      const max = Math.max(...rows.map((r) => Number(r.count || 0)), 1);
+      box.innerHTML = rows.map((r) => {
+        const w = Math.max(4, Math.round((Number(r.count || 0) / max) * 100));
+        return `<div>
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span>${esc(r.month)}</span><strong>${Number(r.count || 0)}</strong></div>
+          <div style="height:8px;background:var(--light-gray);border-radius:5px;overflow:hidden;"><div style="width:${w}%;height:100%;background:linear-gradient(90deg,var(--navy),var(--gold));"></div></div>
+        </div>`;
+      }).join('');
+    }
+    async function loadMemberDistribution() {
+      const box = document.getElementById('distributionList');
+      const { data, error } = await NBADB.getMemberDistribution();
+      if (error || !data) {
+        box.innerHTML = '<p style="margin:0;color:var(--gray);">Unable to load distribution.</p>';
+        return;
+      }
+      const total = Number(data.total || 0) || 1;
+      const tiers = data.byTier || {};
+      const items = [
+        { label: 'Senior Members', value: Number(tiers.senior || 0), color: 'var(--navy)' },
+        { label: 'Junior Members', value: Number(tiers.junior || 0), color: 'var(--gold)' },
+        { label: 'Senior Advocates', value: Number(tiers.san || 0), color: '#dc2626' }
+      ];
+      box.innerHTML = items.map((x) => {
+        const pct = ((x.value / total) * 100);
+        return `<div><div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.4rem;"><span>${x.label}</span><strong>${x.value} (${pct.toFixed(1)}%)</strong></div><div style="height:8px;background:var(--light-gray);border-radius:4px;overflow:hidden;"><div style="width:${pct.toFixed(2)}%;height:100%;background:${x.color};"></div></div></div>`;
+      }).join('');
+    }
+    loadDashboardStats();
+    loadAdminNotifications();
+    loadPendingApplications();
+    loadMembershipGrowth();
+    loadMemberDistribution();
+    NBADB.subscribeNewMembers(() => {
+      loadDashboardStats();
+      loadAdminNotifications();
+      loadPendingApplications();
+      loadMembershipGrowth();
+      loadMemberDistribution();
+    });
+    NBADB.subscribeAdminNotifications(() => loadAdminNotifications());
+  </script>
+</body>
+</html>

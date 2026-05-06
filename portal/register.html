@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Registration — NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-side">
+      <div class="auth-side-content">
+        <a href="../index.html" class="logo" style="margin-bottom:2rem;">
+          <div class="logo-mark"><img src="../assets/nba-logo.png" alt="Nigerian Bar Association logo"></div>
+          <div class="logo-text">
+            <div class="top" style="color:white;">NBA Lokoja</div>
+            <div class="bottom" style="color:var(--gold-light);">Nigerian Bar Association</div>
+          </div>
+        </a>
+        <h2>Join the Confluence Bar</h2>
+        <p>Become part of one of Nigeria's most active and engaged bar branches. Your membership unlocks resources, networking and a unified voice for the legal profession.</p>
+        <ul class="auth-side-list">
+          <li>Apply online — no paperwork</li>
+          <li>Reviewed within 5 working days</li>
+          <li>Secure data handling (RLS-protected)</li>
+          <li>Welcome pack on approval</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="auth-form-side">
+      <div class="auth-form-wrap" style="max-width:560px;">
+        <a href="../index.html" class="logo">
+          <div class="logo-mark"><img src="../assets/nba-logo.png" alt="Nigerian Bar Association logo"></div>
+          <div class="logo-text">
+            <div class="top">NBA Lokoja</div>
+            <div class="bottom">Nigerian Bar Association</div>
+          </div>
+        </a>
+        <h1>Create Your Account</h1>
+        <p>Start your membership application — it takes about 3 minutes.</p>
+
+        <div id="alertBox"></div>
+
+        <form id="registerForm" data-validate>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">First Name *</label><input class="form-control" name="first_name" required></div>
+            <div class="form-group"><label class="form-label">Middle Name</label><input class="form-control" name="middle_name"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Last Name *</label><input class="form-control" name="last_name" required></div>
+            <div class="form-group"><label class="form-label">Title *</label><select class="form-control" name="title" required><option value="">Select title</option><option value="Barr.">Barr.</option><option value="Esq.">Esq.</option><option value="Hon.">Hon.</option><option value="Dr.">Dr.</option><option value="Prof.">Prof.</option><option value="Chief">Chief</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Rank *</label><select class="form-control" name="rank" required><option value="">Select rank</option><option value="Member">Member</option><option value="Senior Member">Senior Member</option><option value="SAN">SAN</option></select></div>
+            <div class="form-group"><label class="form-label">Year Called *</label><input type="number" min="1960" max="2100" class="form-control" name="year_called" required></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Supreme Court Number *</label><input class="form-control" name="scn" placeholder="SCN/2018/12345" required></div>
+            <div class="form-group"><label class="form-label">Gender *</label><select class="form-control" name="gender" required><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Phone Number *</label><input type="tel" class="form-control" name="phone" required></div>
+            <div class="form-group"><label class="form-label">Email *</label><input type="email" class="form-control" name="email" required></div>
+          </div>
+          <div class="form-group"><label class="form-label">Organization Name *</label><input class="form-control" name="organization_name" required></div>
+          <div class="form-group"><label class="form-label">Address *</label><textarea class="form-control" name="address" rows="3" required></textarea></div>
+          <div class="form-group"><label class="form-label">Passport Photo *</label><input type="file" class="form-control" name="passport_photo" accept="image/png,image/jpeg" required><small class="form-help">JPG or PNG, max 2MB.</small></div>
+          <div class="form-group"><label class="form-label">Password *</label><input type="password" class="form-control" id="registerPassword" name="password" minlength="8" required><small class="form-help">Minimum 8 characters with letters and numbers.</small></div>
+          <div class="form-group"><label class="form-label">Confirm Password *</label><input type="password" class="form-control" id="registerConfirmPassword" name="confirm_password" minlength="8" required></div>
+          <div class="form-group"><label style="display:flex;gap:0.5rem;align-items:center;font-size:0.88rem;"><input id="registerShowPasswordToggle" type="checkbox"><span>Show password</span></label></div>
+          <div class="form-group"><label style="display:flex;gap:0.5rem;align-items:flex-start;font-size:0.88rem;"><input type="checkbox" required style="margin-top:0.25rem;"><span>I confirm that I am called to the Nigerian Bar and accept the Constitution & Code of Professional Conduct.</span></label></div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">Create Account</button>
+        </form>
+
+        <p style="margin-top:1.5rem;text-align:center;font-size:0.9rem;">Already have an account? <a href="login.html" style="color:var(--gold-dark);font-weight:600;">Sign in</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script>
+    document.getElementById('registerShowPasswordToggle').addEventListener('change', (e) => {
+      const type = e.target.checked ? 'text' : 'password';
+      document.getElementById('registerPassword').type = type;
+      document.getElementById('registerConfirmPassword').type = type;
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const alertBox = document.getElementById('alertBox');
+      const passportFile = f.passport_photo.files?.[0];
+      if (passportFile && passportFile.size > 2 * 1024 * 1024) {
+        alertBox.innerHTML = '<div class="alert alert-error">Passport photo must be 2MB or less.</div>';
+        return;
+      }
+      if (f.password.value !== f.confirm_password.value) {
+        alertBox.innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
+        return;
+      }
+      alertBox.innerHTML = '<div class="alert alert-info">Submitting your application...</div>';
+      const { data, error } = await NBAAuth.signUp({
+        email: f.email.value,
+        password: f.password.value,
+        firstName: f.first_name.value,
+        middleName: f.middle_name.value,
+        lastName: f.last_name.value,
+        title: f.title.value,
+        rank: f.rank.value,
+        yearCalled: Number(f.year_called.value),
+        phone: f.phone.value,
+        scn: f.scn.value,
+        gender: f.gender.value,
+        organizationName: f.organization_name.value,
+        address: f.address.value
+      });
+      if (error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + error.message + '</div>';
+      } else {
+        const userId = data?.user?.id || data?.session?.user?.id;
+        if (passportFile && userId) {
+          const upload = await NBAStorage.uploadPassport(userId, passportFile);
+          if (!upload.error && upload.data?.path) {
+            const publicUrl = NBAStorage.getPassportPublicUrl(upload.data.path);
+            await NBADB.updateMember(userId, { photo_url: publicUrl?.data?.publicUrl || null });
+          }
+        }
+        const encodedEmail = encodeURIComponent(f.email.value.trim());
+        location.href = 'check-email.html?email=' + encodedEmail;
+      }
+    });
+  </script>
+</body>
+</html>

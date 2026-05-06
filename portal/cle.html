@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLE Courses - NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel">
+          <div class="panel-head"><h3>Available CLE Courses</h3></div>
+          <div class="panel-body" id="cleList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/portal-shared.js"></script>
+  <script>
+    renderPortal('cle', 'CLE Courses');
+    function esc(v){return String(v||'').replace(/[&<>\"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));}
+
+    async function loadCourses(){
+      const holder = document.getElementById('cleList');
+      const session = await NBAAuth.getSession();
+      const user = session?.data?.session?.user;
+      if (!user?.id) { location.href='login.html'; return; }
+      const { data, error } = await NBADB.listCourses();
+      if (error) { holder.innerHTML = '<div class="alert alert-error">Unable to load CLE courses.</div>'; return; }
+      const rows = Array.isArray(data) ? data : [];
+      if (!rows.length) { holder.innerHTML = '<div class="card" style="padding:1rem;">No CLE courses available yet.</div>'; return; }
+      holder.innerHTML = rows.map((c)=>`<article style="padding:0.9rem;background:var(--off-white);border-radius:10px;margin-bottom:0.7rem;"><h4 style="margin:0 0 0.35rem 0;">${esc(c.title)}</h4><p style="margin:0 0 0.5rem 0;font-size:0.9rem;">${esc(c.description || '')}</p><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;"><small style="color:var(--gray);">${esc(c.course_date||'Date TBA')} · ${esc(c.cle_hours||0)} hour(s)</small><button class="btn btn-primary btn-sm" data-id="${c.id}">Enrol</button></div></article>`).join('');
+      holder.querySelectorAll('button[data-id]').forEach((btn)=>{
+        btn.addEventListener('click', async ()=>{
+          const { error: enrollError } = await NBADB.enrollCourse(btn.getAttribute('data-id'), user.id);
+          if (enrollError) { showToast(enrollError.message || 'Could not enrol.', 'error'); return; }
+          showToast('Enrolment successful.', 'success');
+        });
+      });
+    }
+
+    loadCourses();
+  </script>
+</body>
+</html>

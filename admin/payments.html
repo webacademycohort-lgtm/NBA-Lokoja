@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Payments - NBA Lokoja Admin</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../css/style.css"><link rel="stylesheet" href="../css/portal.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body><div class="portal-shell"><div data-include="sidebar"></div><div class="portal-main"><div data-include="topbar"></div><div class="portal-content">
+<div class="stats-grid">
+<div class="stat-card green"><span class="lbl">Confirmed (YTD)</span><span class="num" id="confirmedYtd">N0.00</span></div>
+<div class="stat-card navy"><span class="lbl">This Month</span><span class="num" id="monthTotal">N0.00</span></div>
+<div class="stat-card gold"><span class="lbl">Pending Payments</span><span class="num" id="pendingCount">0</span></div>
+<div class="stat-card red"><span class="lbl">Failed Payments</span><span class="num" id="failedCount">0</span></div>
+</div>
+<div class="panel"><div class="panel-head"><h3>Payment Tracking & Approvals</h3><select id="statusFilter" class="form-control" style="width:220px;padding:0.45rem .75rem;"><option value="">All Status</option><option value="pending_review">Pending Review</option><option value="paid">Paid</option><option value="approved">Approved</option><option value="confirmed">Confirmed</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="failed">Failed</option></select></div>
+<div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="table"><thead><tr><th>Reference</th><th>Member</th><th>Membership ID</th><th>SCN</th><th>Amount</th><th>Period</th><th>Method</th><th>Proof</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody id="paymentsBody"><tr><td colspan="11">Loading...</td></tr></tbody></table></div></div></div>
+</div></div></div>
+<script src="../js/supabase.js"></script><script src="../js/main.js"></script><script src="../js/admin-shared.js"></script>
+<script>
+renderAdmin('payments','Payment Tracking');
+function fmt(v){try{return new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN'}).format(Number(v||0));}catch(e){return `N${Number(v||0).toFixed(2)}`;}}
+function esc(v){return String(v||'').replace(/[&<>"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function isPaidStatus(status){ const s = String(status||'').toLowerCase(); return s==='paid' || s==='approved' || s==='confirmed'; }
+
+async function loadPendingPaymentsAdmin(){
+ return NBADB.loadPendingPaymentsAdmin();
+}
+
+async function approvePayment(paymentId){
+ if(!confirm('Approve this payment and issue official receipt?')) return;
+ const { error } = await NBADB.reviewPayment(paymentId, 'approved', 'Approved by admin');
+ if(error){ alert(error.message || 'Unable to approve payment.'); return; }
+ await loadPayments();
+}
+
+async function rejectPayment(paymentId, reason){
+ const note = (reason || '').trim();
+ if(!note){ alert('Rejection reason is required.'); return; }
+ const { error } = await NBADB.reviewPayment(paymentId, 'rejected', note);
+ if(error){ alert(error.message || 'Unable to reject payment.'); return; }
+ await loadPayments();
+}
+
+async function loadPayments(){
+ const status = document.getElementById('statusFilter').value;
+ const { data, error } = await NBADB.listPaymentsAdmin({ status, limit: 300 });
+ const body = document.getElementById('paymentsBody');
+ if(error){ body.innerHTML='<tr><td colspan="11">Unable to load payments.</td></tr>'; return; }
+ const rows = Array.isArray(data)?data:[];
+ if(!rows.length){ body.innerHTML='<tr><td colspan="11">No payments found.</td></tr>'; return; }
+ body.innerHTML = rows.map(p=>{
+   const m = p.members || {};
+   const statusLower = String(p.status||'').toLowerCase();
+   const badge = (statusLower==='paid'||statusLower==='approved'||statusLower==='confirmed')?'badge-active':(statusLower==='pending'||statusLower==='pending_review'?'badge-pending':'badge-suspended');
+   const proofBtn = p.proof_file_path ? `<button class="btn btn-outline btn-sm view-proof-btn" data-path="${esc(p.proof_file_path)}">View Proof</button>` : '-';
+   const actions = statusLower==='pending_review'
+    ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap;"><button class="btn btn-primary btn-sm approve-btn" data-id="${esc(p.id)}">Approve</button><button class="btn btn-outline btn-sm reject-btn" data-id="${esc(p.id)}">Reject</button></div>`
+    : '-';
+   return `<tr>
+   <td>${esc(p.payment_reference||p.reference||'-')}</td>
+   <td>${esc(m.full_name||'-')}</td>
+   <td>${esc(m.membership_number||'-')}</td>
+   <td>${esc(m.scn_number||'-')}</td>
+   <td>${fmt(p.amount)}</td>
+   <td>${esc(p.payment_period||p.payment_year||'-')}</td>
+   <td>${esc(p.payment_method||p.method||'-')}</td>
+   <td>${proofBtn}</td>
+   <td>${p.created_at?new Date(p.created_at).toLocaleDateString():'-'}</td>
+   <td><span class="badge ${badge}">${esc(p.status||'-')}</span></td>
+   <td>${actions}</td>
+   </tr>`;
+ }).join('');
+ const now = new Date(); const year = now.getFullYear(); const month = now.getMonth();
+ const confirmedYtd = rows.filter(p=>isPaidStatus(p.status) && (p.approved_at || p.paid_at || p.created_at) && new Date(p.approved_at || p.paid_at || p.created_at).getFullYear()===year).reduce((s,p)=>s+Number(p.amount||0),0);
+ const monthTotal = rows.filter(p=>isPaidStatus(p.status) && (p.approved_at || p.paid_at || p.created_at) && new Date(p.approved_at || p.paid_at || p.created_at).getFullYear()===year && new Date(p.approved_at || p.paid_at || p.created_at).getMonth()===month).reduce((s,p)=>s+Number(p.amount||0),0);
+ document.getElementById('confirmedYtd').textContent = fmt(confirmedYtd);
+ document.getElementById('monthTotal').textContent = fmt(monthTotal);
+ document.getElementById('pendingCount').textContent = rows.filter(p=>String(p.status||'').toLowerCase()==='pending_review').length;
+ document.getElementById('failedCount').textContent = rows.filter(p=>p.status==='failed').length;
+}
+document.getElementById('statusFilter').addEventListener('change', loadPayments);
+document.getElementById('paymentsBody').addEventListener('click', async (e)=>{
+  const approveBtn = e.target.closest('.approve-btn');
+  const rejectBtn = e.target.closest('.reject-btn');
+  const proofBtn = e.target.closest('.view-proof-btn');
+  if(approveBtn){ await approvePayment(approveBtn.dataset.id); return; }
+  if(rejectBtn){
+    const reason = prompt('Enter rejection reason:');
+    if(reason===null) return;
+    await rejectPayment(rejectBtn.dataset.id, reason);
+    return;
+  }
+  if(proofBtn){
+    const { data, error } = await NBAStorage.createPaymentProofSignedUrl(proofBtn.dataset.path, 3600);
+    if(error || !data?.signedUrl){ alert(error?.message || 'Unable to open proof file.'); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+});
+loadPayments();
+</script></body></html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documents - NBA Lokoja Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Upload to Resource Library</h3></div>
+            <div class="panel-body">
+              <div id="docAlert"></div>
+              <form id="docForm" data-validate>
+                <div class="form-group"><label class="form-label">Title *</label><input name="title" class="form-control" required></div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Type</label><input name="type" class="form-control" placeholder="Newsletter"></div>
+                  <div class="form-group"><label class="form-label">Access</label><select name="members_only" class="form-control"><option value="false">Public</option><option value="true">Members Only</option></select></div>
+                </div>
+                <div class="form-group"><label class="form-label">Document File *</label><input name="file" type="file" class="form-control" required></div>
+                <button class="btn btn-primary" type="submit">Upload Document</button>
+              </form>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Current Documents</h3></div>
+            <div class="panel-body" id="docList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin-shared.js"></script>
+  <script>
+    renderAdmin('documents', 'Document Repository');
+    function esc(v){return String(v||'').replace(/[&<>\"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));}
+
+    async function loadDocs(){
+      const holder = document.getElementById('docList');
+      const { data } = await NBADB.listPublications();
+      const rows = Array.isArray(data) ? data : [];
+      holder.innerHTML = rows.length ? rows.map((d)=>`<div style="padding:0.8rem;background:var(--off-white);border-radius:10px;margin-bottom:0.6rem;"><h5 style="margin:0 0 0.25rem 0;">${esc(d.title)}</h5><div style="font-size:0.8rem;color:var(--gray);">${esc(d.type||'Document')} · ${d.members_only?'Members Only':'Public'}</div></div>`).join('') : '<div class="card" style="padding:1rem;">Document repository is empty.</div>';
+    }
+
+    document.getElementById('docForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const f = e.target;
+      const alertBox = document.getElementById('docAlert');
+      const file = f.file.files?.[0];
+      if (!file) return;
+      const safeName = file.name.replace(/\s+/g, '-');
+      const storagePath = 'library/' + Date.now() + '-' + safeName;
+      const upload = await NBAStorage.uploadDocument(file, storagePath);
+      if (upload.error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + (upload.error.message||'Upload failed.') + '</div>';
+        return;
+      }
+      const { error } = await NBADB.createPublication({
+        title: f.title.value.trim(),
+        type: f.type.value.trim(),
+        storage_path: storagePath,
+        size_bytes: file.size,
+        members_only: f.members_only.value === 'true'
+      });
+      if (error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + (error.message||'Could not save metadata.') + '</div>';
+        return;
+      }
+      alertBox.innerHTML = '<div class="alert alert-success">Document uploaded successfully.</div>';
+      f.reset();
+      loadDocs();
+    });
+
+    loadDocs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Analytics - NBA Lokoja Admin</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="../css/style.css"><link rel="stylesheet" href="../css/portal.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body><div class="portal-shell"><div data-include="sidebar"></div><div class="portal-main"><div data-include="topbar"></div><div class="portal-content">
+<div class="stats-grid">
+<div class="stat-card navy"><span class="lbl">New Registrations (30d)</span><span class="num" id="reg30">0</span></div>
+<div class="stat-card green"><span class="lbl">Approvals (30d)</span><span class="num" id="app30">0</span></div>
+<div class="stat-card gold"><span class="lbl">Events Created (30d)</span><span class="num" id="events30">0</span></div>
+<div class="stat-card red"><span class="lbl">Application Conversion</span><span class="num" id="conv">0%</span></div>
+</div>
+<div class="panel-grid">
+<div class="panel"><div class="panel-head"><h3>Membership Growth (12 Months)</h3></div><div class="panel-body"><div id="growthRows">Loading...</div></div></div>
+<div class="panel"><div class="panel-head"><h3>Member Distribution</h3></div><div class="panel-body"><div id="distRows">Loading...</div></div></div>
+</div>
+</div></div></div>
+<script src="../js/supabase.js"></script><script src="../js/main.js"></script><script src="../js/admin-shared.js"></script>
+<script>
+renderAdmin('analytics','Analytics & Insights');
+function esc(v){return String(v||'').replace(/[&<>"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+async function loadAnalytics(){
+ const a = await NBADB.getAnalyticsOverview();
+ if(!a.error && a.data){
+  document.getElementById('reg30').textContent = a.data.newRegistrations30d || 0;
+  document.getElementById('app30').textContent = a.data.approvals30d || 0;
+  document.getElementById('events30').textContent = a.data.events30d || 0;
+  document.getElementById('conv').textContent = `${Number(a.data.conversionRate||0).toFixed(1)}%`;
+ }
+ const g = await NBADB.getMembershipGrowth(12);
+ const growth = document.getElementById('growthRows');
+ if(g.error){ growth.textContent = 'Unable to load growth data.'; }
+ else {
+  const rows = g.data || [];
+  growth.innerHTML = rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--light-gray);"><span>${esc(r.month)}</span><strong>${r.count}</strong></div>`).join('') || 'No data yet.';
+ }
+ const d = await NBADB.getMemberDistribution();
+ const dist = document.getElementById('distRows');
+ if(d.error || !d.data){ dist.textContent='Unable to load distribution.'; }
+ else {
+  const t = d.data.total || 0; const bt = d.data.byTier || {};
+  dist.innerHTML = ['junior','senior','san'].map(k=>{ const v=bt[k]||0; const pct=t?((v/t)*100).toFixed(1):'0.0'; return `<div style="display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--light-gray);"><span>${k.toUpperCase()}</span><strong>${v} (${pct}%)</strong></div>`; }).join('');
+ }
+}
+loadAnalytics(); NBADB.subscribeNewMembers(()=>loadAnalytics());
+</script></body></html>
