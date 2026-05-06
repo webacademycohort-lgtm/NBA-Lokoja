@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Directory — NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Member Directory</h3>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <input type="search" class="form-control" placeholder="Search by name or SCN" style="width:240px;padding:0.5rem 0.75rem;font-size:0.85rem;">
+              <select class="form-control" style="width:160px;padding:0.5rem 0.75rem;font-size:0.85rem;"><option>All Practice Areas</option><option>Litigation</option><option>Corporate</option><option>Property</option></select>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="grid grid-3" id="memberGrid">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/portal-shared.js"></script>
+  <script>
+    renderPortal('directory', 'Member Directory');
+    setTimeout(async () => {
+      const { data, error } = await NBADB.listMembers({ status: 'active' });
+      const directory = Array.isArray(data) ? data : [];
+      if (error) {
+        document.getElementById('memberGrid').innerHTML = '<div class="card" style="padding:1rem;">Could not load directory right now.</div>';
+        return;
+      }
+      const html = directory.map((m) => {
+        const name = m.full_name || 'Unnamed Member';
+        const initials = name.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
+        const role = (m.role || 'member').replace('_', ' ');
+        const areas = Array.isArray(m.practice_areas) && m.practice_areas.length ? m.practice_areas.join(', ') : 'Practice area not set';
+        return `
+        <div class="card" style="text-align:center;padding:1.5rem;">
+          <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--navy-light));color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--font-serif);font-size:1.6rem;font-weight:700;margin:0 auto 1rem;border:3px solid var(--gold);">${initials}</div>
+          <h4 style="margin-bottom:0.25rem;">${name}</h4>
+          <div style="font-size:0.78rem;color:var(--gold-dark);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:0.4rem;">${role}</div>
+          <p style="font-size:0.85rem;margin-bottom:0.6rem;">${areas}</p>
+          <p style="font-size:0.78rem;color:var(--gray);font-family:monospace;">${m.scn_number || '-'}</p>
+          <button class="btn btn-outline btn-sm mt-2">View Profile</button>
+        </div>`;
+      }).join('');
+      document.getElementById('memberGrid').innerHTML = html;
+    }, 200);
+  </script>
+</body>
+</html>

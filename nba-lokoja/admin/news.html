@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News & Blog - NBA Lokoja Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Publish Blog / News</h3></div>
+            <div class="panel-body">
+              <div id="newsAlert"></div>
+              <form id="newsForm" data-validate>
+                <input type="hidden" name="newsId" id="newsId">
+                <div class="form-group"><label class="form-label">Headline *</label><input class="form-control" name="title" required></div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Category</label><input class="form-control" name="category" placeholder="Branch News"></div>
+                  <div class="form-group"><label class="form-label">Publish</label><select class="form-control" name="is_published"><option value="true">Yes</option><option value="false">No (Draft)</option></select></div>
+                </div>
+                <div class="form-group"><label class="form-label">Excerpt</label><textarea class="form-control" name="excerpt" rows="2"></textarea></div>
+                <div class="form-group"><label class="form-label">Body *</label>
+                  <div class="editor-toolbar" style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" id="boldBtn">Bold</button>
+                    <button type="button" class="btn btn-outline btn-sm" id="insertImageBtn">Insert Image</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="previewArticleBtn">Preview Article</button>
+                    <button type="button" class="btn btn-outline btn-sm" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+                  </div>
+                  <textarea class="form-control" name="body" rows="10" required></textarea>
+                </div>
+                <button class="btn btn-primary" type="submit" id="newsSubmitBtn">Post Article</button>
+              </form>
+              <div id="articlePreview" class="card" style="display:none;margin-top:1rem;padding:1rem;background:rgba(247,247,251,0.95);border:1px solid rgba(0,0,0,0.08);"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Recent Articles</h3></div>
+            <div class="panel-body" id="recentNews"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin-shared.js"></script>
+  <script>
+    renderAdmin('news', 'News & Blog Manager');
+
+    let editingNewsId = null;
+    const newsForm = document.getElementById('newsForm');
+    const newsSubmitBtn = document.getElementById('newsSubmitBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const previewArticleBtn = document.getElementById('previewArticleBtn');
+    const boldBtn = document.getElementById('boldBtn');
+    const insertImageBtn = document.getElementById('insertImageBtn');
+    const articlePreview = document.getElementById('articlePreview');
+    const newsIdInput = document.getElementById('newsId');
+
+    function esc(v) { return String(v || '').replace(/[&<>\"']/g, (ch) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[ch])); }
+    function sanitizeHTML(value) {
+      return String(value || '').replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '').trim();
+    }
+    function formatDate(value) { return value ? new Date(value).toLocaleDateString() : 'Draft'; }
+
+    function renderNewsItem(news) {
+      return `
+        <div style="padding:1rem;margin-bottom:0.75rem;border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:var(--off-white);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <div>
+              <h5 style="margin:0 0 0.35rem 0;color:var(--charcoal);">${esc(news.title)}</h5>
+              <div style="font-size:0.82rem;color:var(--gray);">${esc(news.category || 'General')} • ${formatDate(news.published_at)}</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm editNewsBtn" data-id="${esc(news.id)}">Edit</button>
+              <button type="button" class="btn btn-danger btn-sm deleteNewsBtn" data-id="${esc(news.id)}">Delete</button>
+            </div>
+          </div>
+          <p style="margin:0.75rem 0 0 0;color:var(--gray);">${esc((news.excerpt || news.body || '').replace(/<[^>]+>/g, '')).slice(0, 160)}${(news.excerpt || news.body || '').replace(/<[^>]+>/g, '').length > 160 ? '...' : ''}</p>
+        </div>
+      `;
+    }
+
+    async function loadRecentNews() {
+      const holder = document.getElementById('recentNews');
+      const { data, error } = await NBADB.listNews();
+      if (error) {
+        holder.innerHTML = '<div class="card" style="padding:1rem;">Unable to load posts.</div>';
+        return;
+      }
+      const rows = Array.isArray(data) ? data.slice(0, 12) : [];
+      if (!rows.length) {
+        holder.innerHTML = '<div class="card" style="padding:1rem;">No posts yet.</div>';
+        return;
+      }
+      holder.innerHTML = rows.map(renderNewsItem).join('');
+      holder.querySelectorAll('.editNewsBtn').forEach((button) => {
+        button.addEventListener('click', () => editNews(button.dataset.id));
+      });
+      holder.querySelectorAll('.deleteNewsBtn').forEach((button) => {
+        button.addEventListener('click', () => deleteNews(button.dataset.id));
+      });
+    }
+
+    async function editNews(newsId) {
+      const { data, error } = await NBADB.getNewsById(newsId);
+      if (error || !data) return;
+      editingNewsId = newsId;
+      newsIdInput.value = newsId;
+      newsForm.title.value = data.title;
+      newsForm.category.value = data.category || '';
+      newsForm.excerpt.value = data.excerpt || '';
+      newsForm.body.value = sanitizeHTML(data.body || '');
+      newsForm.is_published.value = data.is_published ? 'true' : 'false';
+      newsSubmitBtn.textContent = 'Update Article';
+      cancelEditBtn.style.display = 'inline-flex';
+      articlePreview.style.display = 'none';
+    }
+
+    async function deleteNews(newsId) {
+      if (!confirm('Are you sure you want to permanently delete this post?')) return;
+      const { error } = await NBADB.deleteNews(newsId);
+      const alertBox = document.getElementById('newsAlert');
+      if (error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + (error.message || 'Unable to delete post.') + '</div>';
+        return;
+      }
+      alertBox.innerHTML = '<div class="alert alert-success">Post deleted successfully.</div>';
+      if (editingNewsId === newsId) resetNewsForm();
+      await loadRecentNews();
+    }
+
+    function resetNewsForm() {
+      editingNewsId = null;
+      newsIdInput.value = '';
+      newsForm.reset();
+      newsSubmitBtn.textContent = 'Post Article';
+      cancelEditBtn.style.display = 'none';
+      articlePreview.style.display = 'none';
+    }
+
+    function wrapSelection(textarea, insertValue) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = textarea.value.substring(start, end) || '';
+      const replacement = insertValue.replace('%s', selected || 'bold text');
+      textarea.setRangeText(replacement, start, end, 'end');
+      textarea.focus();
+    }
+
+    function renderPreview() {
+      const title = newsForm.title.value.trim() || 'Untitled article';
+      const category = newsForm.category.value.trim() || 'General';
+      const excerpt = newsForm.excerpt.value.trim() || '';
+      const body = sanitizeHTML(newsForm.body.value);
+      articlePreview.innerHTML = `
+        <div style="margin-bottom:1rem;">
+          <div style="font-size:0.85rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.08em;">Preview</div>
+          <h4 style="margin:0.4rem 0 0 0;">${esc(title)}</h4>
+          <div style="font-size:0.82rem;color:var(--gray);margin-top:0.25rem;">${esc(category)} • ${formatDate(new Date().toISOString())}</div>
+        </div>
+        ${excerpt ? `<p style="font-size:0.95rem;color:var(--charcoal);margin-bottom:1rem;">${esc(excerpt)}</p>` : ''}
+        <div style="color:var(--charcoal);line-height:1.7;">${body}</div>
+      `;
+      articlePreview.style.display = 'block';
+    }
+
+    previewArticleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderPreview();
+    });
+
+    boldBtn.addEventListener('click', () => {
+      wrapSelection(newsForm.body, '<strong>%s</strong>');
+    });
+
+    insertImageBtn.addEventListener('click', () => {
+      const imageUrl = window.prompt('Enter the full image URL:');
+      if (!imageUrl) return;
+      wrapSelection(newsForm.body, `<img src="${imageUrl}" alt="Article image" style="max-width:100%;height:auto;" />`);
+    });
+
+    cancelEditBtn.addEventListener('click', () => {
+      resetNewsForm();
+    });
+
+    newsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alertBox = document.getElementById('newsAlert');
+      const session = await NBAAuth.getSession();
+      const adminId = session?.data?.session?.user?.id || null;
+      const payload = {
+        title: newsForm.title.value.trim(),
+        excerpt: newsForm.excerpt.value.trim(),
+        body: sanitizeHTML(newsForm.body.value),
+        category: newsForm.category.value.trim(),
+        is_published: newsForm.is_published.value === 'true',
+        author_id: adminId
+      };
+      let result;
+      if (editingNewsId) {
+        result = await NBADB.updateNews(editingNewsId, payload);
+      } else {
+        result = await NBADB.createNews(payload);
+      }
+      if (result.error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + (result.error.message || 'Failed to save post.') + '</div>';
+        return;
+      }
+      alertBox.innerHTML = '<div class="alert alert-success">' + (editingNewsId ? 'Post updated successfully.' : 'Post published successfully.') + '</div>';
+      resetNewsForm();
+      loadRecentNews();
+    });
+
+    loadRecentNews();
+  </script>
+</body>
+</html>

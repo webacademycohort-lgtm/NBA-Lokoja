@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help & Support - NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Submit Support Ticket</h3></div>
+            <div class="panel-body">
+              <div id="supportAlert"></div>
+              <form id="ticketForm" data-validate>
+                <div class="form-group"><label class="form-label">Category *</label><select name="category" class="form-control" required><option value="">Select Category</option><option>Membership</option><option>Payments</option><option>Events</option><option>CLE</option><option>Technical</option><option>Other</option></select></div>
+                <div class="form-group"><label class="form-label">Priority</label><select name="priority" class="form-control"><option>normal</option><option>high</option><option>urgent</option></select></div>
+                <div class="form-group"><label class="form-label">Subject *</label><input name="subject" class="form-control" required></div>
+                <div class="form-group"><label class="form-label">Description *</label><textarea name="description" class="form-control" rows="6" required></textarea></div>
+                <button type="submit" class="btn btn-primary">Submit Ticket</button>
+              </form>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>My Tickets</h3></div>
+            <div class="panel-body" id="ticketList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/portal-shared.js"></script>
+  <script>
+    renderPortal('support', 'Help & Support');
+    function esc(v){return String(v||'').replace(/[&<>\"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));}
+
+    async function loadMyTickets(){
+      const holder = document.getElementById('ticketList');
+      const session = await NBAAuth.getSession();
+      const user = session?.data?.session?.user;
+      if (!user?.id) { location.href='login.html'; return; }
+      const { data, error } = await NBADB.listMySupportTickets(user.id);
+      if (error) { holder.innerHTML = '<div class="alert alert-error">Unable to load tickets.</div>'; return; }
+      const rows = Array.isArray(data) ? data : [];
+      holder.innerHTML = rows.length ? rows.map((t)=>`<div style="padding:0.8rem;background:var(--off-white);border-radius:10px;margin-bottom:0.6rem;"><div style="display:flex;justify-content:space-between;"><strong>${esc(t.subject)}</strong><span class="badge">${esc(t.status||'open')}</span></div><p style="margin:0.35rem 0 0 0;font-size:0.88rem;">${esc(t.description||'')}</p><small style="color:var(--gray);">Category: ${esc(t.category||'general')} • Priority: ${esc(t.priority||'normal')}</small></div>`).join('') : '<div class="card" style="padding:1rem;">No support tickets yet.</div>';
+    }
+
+    document.getElementById('ticketForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const f = e.target;
+      const alertBox = document.getElementById('supportAlert');
+      const session = await NBAAuth.getSession();
+      const user = session?.data?.session?.user;
+      const { error } = await NBADB.createSupportTicket({
+        user_id: user?.id,
+        category: f.category.value.trim(),
+        priority: f.priority.value,
+        subject: f.subject.value.trim(),
+        description: f.description.value.trim(),
+        status: 'open'
+      });
+      if (error) { alertBox.innerHTML = '<div class="alert alert-error">'+(error.message||'Failed to submit ticket.')+'</div>'; return; }
+      alertBox.innerHTML = '<div class="alert alert-success">Ticket submitted successfully.</div>';
+      f.reset();
+      loadMyTickets();
+    });
+
+    loadMyTickets();
+  </script>
+</body>
+</html>

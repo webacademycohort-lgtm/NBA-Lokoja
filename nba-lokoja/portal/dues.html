@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dues & Payments - NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    .receipt-shell {
+      width: 100%;
+      max-width: 794px;
+      min-height: 1123px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #dde3ea;
+      border-radius: 12px;
+      box-shadow: 0 16px 36px rgba(7, 31, 47, 0.12);
+      position: relative;
+      overflow: hidden;
+      font-family: "Inter", sans-serif;
+      color: #17212b;
+    }
+    .receipt-shell::before {
+      content: "NBA LOKOJA  OFFICIAL RECEIPT";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-24deg);
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: rgba(7, 31, 47, 0.05);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .receipt-inner { position: relative; z-index: 1; padding: 1.15rem 1.2rem 1rem; display: grid; gap: 0.9rem; }
+    .receipt-header {
+      border: 1px solid #d7dee7;
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 0.9rem;
+      align-items: center;
+      background: linear-gradient(180deg, #fbfcfe 0%, #f6f8fb 100%);
+    }
+    .receipt-brand { display: flex; align-items: center; gap: 0.7rem; }
+    .receipt-brand img { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+    .receipt-brand h2 { margin: 0; color: #071f2f; font-size: 1.02rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+    .receipt-brand p { margin: 0.14rem 0 0; font-size: 0.72rem; color: #3f4f5f; }
+    .receipt-brand .sub { margin-top: 0.16rem; color: #0f3d2e; font-weight: 700; }
+    .receipt-tag {
+      border: 1px solid #d7dee7;
+      border-radius: 10px;
+      padding: 0.7rem 0.75rem;
+      background: #ffffff;
+      display: grid;
+      gap: 0.35rem;
+      justify-items: start;
+    }
+    .receipt-tag .title { font-size: 1rem; font-weight: 800; letter-spacing: 0.1em; color: #071f2f; text-transform: uppercase; }
+    .receipt-tag .rcp-no { font-size: 0.72rem; color: #3f4f5f; font-weight: 600; }
+    .status-badge {
+      font-size: 0.62rem;
+      padding: 0.2rem 0.48rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      border: 1px solid transparent;
+      display: inline-flex;
+    }
+    .status-badge.confirmed, .status-badge.successful, .status-badge.paid {
+      background: rgba(15, 61, 46, 0.12); color: #0f3d2e; border-color: rgba(15, 61, 46, 0.25);
+    }
+    .status-badge.pending { background: rgba(201, 162, 39, 0.16); color: #7f6010; border-color: rgba(201, 162, 39, 0.4); }
+    .status-badge.failed { background: rgba(185, 28, 28, 0.12); color: #9f1c1c; border-color: rgba(185, 28, 28, 0.25); }
+
+    .receipt-meta {
+      border: 1px solid #d7dee7;
+      border-radius: 10px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      background: #fff;
+    }
+    .receipt-meta-item { padding: 0.58rem 0.6rem; border-right: 1px solid #e2e7ee; }
+    .receipt-meta-item:last-child { border-right: 0; }
+    .receipt-meta-item .k { display: block; font-size: 0.57rem; color: #667788; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 700; margin-bottom: 0.16rem; }
+    .receipt-meta-item .v { font-size: 0.69rem; color: #17212b; font-weight: 600; word-break: break-word; }
+
+    .receipt-section { border: 1px solid #d7dee7; border-radius: 10px; overflow: hidden; background: #fff; }
+    .receipt-section-title {
+      background: linear-gradient(90deg, #071f2f 0%, #0f3f73 68%, #0f3d2e 100%);
+      color: #fff;
+      padding: 0.5rem 0.62rem;
+      font-size: 0.66rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .member-grid {
+      padding: 0.7rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem 0.85rem;
+    }
+    .member-item .k { display: block; font-size: 0.57rem; color: #667788; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 0.14rem; }
+    .member-item .v { font-size: 0.72rem; color: #17212b; font-weight: 600; word-break: break-word; }
+
+    .payment-table { width: 100%; border-collapse: collapse; }
+    .payment-table th, .payment-table td { border: 1px solid #e2e7ee; padding: 0.52rem 0.56rem; text-align: left; font-size: 0.72rem; }
+    .payment-table th { background: #f3f6fa; color: #203344; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.58rem; }
+    .payment-table td { color: #17212b; }
+    .payment-table tfoot td { background: #f8fbff; font-weight: 700; }
+
+    .receipt-bottom {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.8rem;
+      align-items: stretch;
+    }
+    .amount-box {
+      border: 1px solid #d7dee7;
+      border-left: 4px solid #0f3d2e;
+      border-radius: 10px;
+      padding: 0.75rem 0.8rem;
+      background: linear-gradient(180deg, #f9fcfb 0%, #ffffff 100%);
+      display: grid;
+      gap: 0.32rem;
+      align-content: start;
+    }
+    .amount-box .label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: #536373; font-weight: 700; }
+    .amount-box .value { font-size: 1.55rem; color: #071f2f; font-weight: 800; line-height: 1; }
+
+    .verification-box {
+      width: 186px;
+      border: 1px solid #d7dee7;
+      border-radius: 10px;
+      padding: 0.62rem;
+      background: #fff;
+      display: grid;
+      justify-items: center;
+      gap: 0.32rem;
+      align-content: start;
+    }
+    .verification-box .label { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.1em; color: #0f3f73; font-weight: 700; }
+    .receipt-qr {
+      width: 78px;
+      height: 78px;
+      border: 1px solid rgba(201, 162, 39, 0.52);
+      border-radius: 8px;
+      background: #fff;
+      padding: 6px;
+      box-shadow: 0 5px 12px rgba(7, 31, 47, 0.12);
+      display: grid;
+      place-items: center;
+    }
+    .verification-note { font-size: 0.58rem; line-height: 1.32; color: #5a6b7c; text-align: center; }
+
+    .receipt-footer {
+      border-top: 1px dashed #cfd8e2;
+      margin-top: 0.2rem;
+      padding-top: 0.72rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+      align-items: end;
+    }
+    .signature-line {
+      border-top: 1px solid #a5b4c3;
+      padding-top: 0.23rem;
+      font-size: 0.64rem;
+      color: #2f4356;
+    }
+    .receipt-footer-right { text-align: right; font-size: 0.62rem; color: #4f6071; line-height: 1.5; }
+    .receipt-disclaimer { margin-top: 0.45rem; font-size: 0.56rem; color: #6a7a8b; line-height: 1.35; }
+
+    .a4-capture { width: 794px; min-height: 1123px; border-radius: 0; box-shadow: none; margin: 0; }
+    .hidden-canvas { position: fixed; left: -99999px; top: -99999px; opacity: 0; pointer-events: none; }
+    @media (max-width: 900px) {
+      .receipt-header { grid-template-columns: 1fr; }
+      .receipt-meta { grid-template-columns: 1fr 1fr; }
+      .member-grid { grid-template-columns: 1fr; }
+      .receipt-bottom { grid-template-columns: 1fr; }
+      .verification-box { width: 100%; }
+      .receipt-footer { grid-template-columns: 1fr; }
+      .receipt-footer-right { text-align: left; }
+    }
+    @media print {
+      .receipt-shell {
+        box-shadow: none;
+        border: 1px solid #d7dee7;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Make Payment</h3></div>
+            <div class="panel-body">
+              <div id="paymentAlert"></div>
+              <form id="paymentForm" data-validate>
+                <div class="form-group">
+                  <label class="form-label">Payment Type *</label>
+                  <select name="paymentType" class="form-control" required>
+                    <option value="">Select Payment Type</option>
+                    <option value="branch_dues">Branch Due (50% of BPF)</option>
+                    <option value="bmf">Bar Maintenance Fee (BMF)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Calculated Amount (NGN)</label>
+                  <input type="text" name="amount" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Payment Year *</label>
+                  <input type="number" name="paymentYear" class="form-control" min="2020" max="2035" value="2026" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Year of Call *</label>
+                  <input type="number" name="yearOfCall" class="form-control" min="1960" max="2100" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Post-Call Year Band</label>
+                  <input type="text" name="postCallBand" class="form-control" readonly>
+                </div>
+                <div id="branchDueBreakdown" class="card" style="display:none;margin-top:0.75rem;padding:0.85rem;background:#f8faf8;border:1px solid #d8e1d6;">
+                  <div style="font-weight:700;margin-bottom:0.5rem;">Branch Due Calculation</div>
+                  <div id="branchDueBreakdownContent" style="font-size:0.9rem;line-height:1.55;color:var(--charcoal);"></div>
+                </div>
+                <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center;">
+                  <button type="button" class="btn btn-secondary" id="previewPaymentBtn">Preview Receipt</button>
+                  <button type="button" class="btn btn-primary" id="payNowBtn" disabled style="display:none;">Pay with Paystack</button>
+                </div>
+                <div class="card" style="margin-top:1rem;padding:0.85rem;background:#f8faf8;border:1px solid #d8e1d6;">
+                  <div style="font-weight:700;margin-bottom:0.5rem;">Transfer Option Payment Details</div>
+                  <div style="font-size:0.92rem;line-height:1.5;">
+                    <strong>Branch Due Account</strong><br>
+                    Account Name: Nigerian Bar Association<br>
+                    Account Number: 1011681680<br>
+                    Bank: Zenith Bank Plc<br><br>
+                    <strong>Bar Maintenance Fee Account</strong><br>
+                    Account Name: NBA Lokoja Bar Maintenance Account<br>
+                    Account Number: 0513215266<br>
+                    Bank: Alternative Bank Limited<br><br>
+                    <strong>Important Notice</strong><br>
+                    After making payment, kindly forward your proof of payment along with your preferred receipt name to: <strong>08053687335</strong>
+                  </div>
+                </div>
+                <div class="card" style="margin-top:1rem;padding:0.95rem;background:#ffffff;border:1px solid #d7dee7;">
+                  <div style="font-weight:700;margin-bottom:0.6rem;color:#071f2f;">Manual Bank Transfer Submission</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
+                    <div><strong style="font-size:0.8rem;">Bank Name</strong><div style="font-size:0.9rem;">Zenith Bank Plc</div></div>
+                    <div><strong style="font-size:0.8rem;">Account Name</strong><div style="font-size:0.9rem;">Nigerian Bar Association</div></div>
+                    <div><strong style="font-size:0.8rem;">Account Number</strong><div style="font-size:0.9rem;">1011681680</div></div>
+                    <div><strong style="font-size:0.8rem;">Narration Format</strong><div style="font-size:0.9rem;">NBA Lokoja Due - Your Name - Membership ID</div></div>
+                  </div>
+                  <div style="margin-top:0.75rem;">
+                    <label class="form-label">Upload Transfer Proof (JPG/PNG/WEBP/PDF, max 5MB)</label>
+                    <input id="bankProofInput" type="file" class="form-control" accept="image/jpeg,image/png,image/webp,application/pdf">
+                  </div>
+                  <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:0.7rem;">
+                    <button type="button" class="btn btn-outline" id="submitBankTransferBtn">Submit Payment for Review</button>
+                    <span id="bankTransferStatusBadge" class="badge badge-pending" style="display:none;"></span>
+                  </div>
+                  <div id="bankTransferMessage" style="margin-top:0.55rem;font-size:0.86rem;color:#475569;"></div>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Receipt Preview</h3></div>
+            <div class="panel-body">
+              <div id="paymentPreview" style="display:none;"></div>
+            </div>
+          </div>
+          <div class="panel" style="grid-column:1 / -1;">
+            <div class="panel-head"><h3>Payment History</h3></div>
+            <div class="panel-body"><div id="paymentHistory"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pdfReceiptStage" class="hidden-canvas"></div>
+
+  <script src="../js/supabase.js"></script>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/portal-shared.js"></script>
+  <script>
+    renderPortal('dues', 'Dues & Payments');
+
+    const PAYSTACK_PUBLIC_KEY = (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env && globalThis.process.env.VITE_PAYSTACK_PUBLIC_KEY)
+      || 'pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    const BRANCH_NAME = 'NBA Lokoja Branch';
+    const BRANCH_ADDRESS = 'Lokoja, Kogi State, Nigeria';
+    let selectedPayment = null;
+    let loadedPayments = [];
+    let currentUserId = null;
+
+    function esc(v) {
+      return String(v || '').replace(/[&<>\"']/g, (ch) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[ch]));
+    }
+
+    function money(n) { return Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function naira(n) { return `NGN ${money(n)}`; }
+
+    function paymentTypeLabel(value) {
+      const map = { branch_dues: 'Branch Due', bmf: 'Bar Maintenance Fee' };
+      return map[value] || value || '-';
+    }
+    function paymentTypeCode(value) {
+      const map = { branch_dues: 'BDP', bmf: 'BMF' };
+      return map[value] || 'PAY';
+    }
+    function isSeniorCategory(member) {
+      const text = `${member.rank || ''} ${member.title || ''} ${member.role || ''}`.toLowerCase();
+      return text.includes('san') || text.includes('honourable') || text.includes('honorable') || text.includes('bench');
+    }
+    function postCallYears(yearOfCall) {
+      const currentYear = new Date().getFullYear();
+      const yc = Number(yearOfCall);
+      if (!yc || yc > currentYear) return -1;
+      return Math.max(0, currentYear - yc);
+    }
+    function computeBpf(member, years) {
+      if (isSeniorCategory(member)) return 50000;
+      if (years >= 15) return 25000;
+      if (years >= 10) return 17500;
+      if (years >= 5) return 10000;
+      if (years >= 1) return 5000;
+      return 0;
+    }
+    function computeBmf(member, years) {
+      if (isSeniorCategory(member)) return 50000;
+      if (years >= 21) return 15000;
+      if (years >= 16) return 12000;
+      if (years >= 11) return 10000;
+      if (years >= 6) return 6000;
+      if (years >= 3) return 3000;
+      return 0;
+    }
+    function computeAmountByType(type, member, years) {
+      const bpf = computeBpf(member, years);
+      if (type === 'branch_dues') return bpf * 0.5;
+      if (type === 'bmf') return computeBmf(member, years);
+      return 0;
+    }
+    function computeBand(type, years) {
+      if (type === 'branch_dues') return 'Fixed at 50% of BPF';
+      if (type === 'bmf') {
+        if (years >= 21) return '21 years and above';
+        if (years >= 16) return '16-20 years';
+        if (years >= 11) return '11-15 years';
+        if (years >= 6) return '6-10 years';
+        if (years >= 3) return '3-5 years';
+        return '1-2 years';
+      }
+      return '-';
+    }
+    function computeBranchDueDetails(member, yearOfCall) {
+      const years = postCallYears(yearOfCall);
+      if (years < 0) return { error: 'Year of Call cannot be greater than the current year.' };
+      const bpf = computeBpf(member, years);
+      const branchDue = bpf * 0.5;
+      let category = '1-4 years';
+      if (isSeniorCategory(member)) category = 'SAN / Senior Category';
+      else if (years >= 15) category = '15+ years';
+      else if (years >= 10) category = '10-14 years';
+      else if (years >= 5) category = '5-9 years';
+      return { years, bpf, branchDue, category };
+    }
+
+    function buildReceiptNumber(reference) {
+      return reference ? `RCP-${reference}` : `RCP-${Date.now()}`;
+    }
+
+    function generateReceiptNumber() {
+      const year = new Date().getFullYear();
+      const rand = Math.random().toString(36).slice(2, 10).toUpperCase();
+      return `NBA-LOC-${year}-${rand}`;
+    }
+
+    function toDateText(iso) {
+      const d = iso ? new Date(iso) : new Date();
+      return d.toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: '2-digit' });
+    }
+
+    function toDateTimeText(iso) {
+      const d = iso ? new Date(iso) : new Date();
+      return d.toLocaleString('en-NG', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function receiptStatusClass(status) {
+      const value = String(status || '').toLowerCase();
+      if (value === 'confirmed' || value === 'successful' || value === 'paid') return 'confirmed';
+      if (value === 'failed') return 'failed';
+      return 'pending';
+    }
+
+    function canDownloadReceipt(payment) {
+      const value = String(payment?.status || '').toLowerCase();
+      return value === 'paid' || value === 'approved' || value === 'confirmed';
+    }
+
+    function getPaymentChannel(payment) {
+      return payment.payment_channel || payment.method || 'Paystack';
+    }
+
+    function buildReceiptQrValue(member, payment, receiptNumber) {
+      return JSON.stringify({
+        receipt_number: receiptNumber,
+        payment_reference: payment.reference || null,
+        member_name: member.full_name || null,
+        amount: Number(payment.amount || 0),
+        status: payment.status || 'pending'
+      });
+    }
+
+    function receiptHtml(member, payment, opts = {}) {
+      const receiptNo = payment.receipt_number || buildReceiptNumber(payment.reference);
+      const paymentDateRaw = payment.created_at || new Date().toISOString();
+      const paymentDate = toDateText(paymentDateRaw);
+      const paymentDateTime = toDateTimeText(paymentDateRaw);
+      const isCapture = !!opts.capture;
+      const typeKey = payment.paymentType || payment.payment_type || payment.type;
+      const description = payment.description || `${paymentTypeLabel(typeKey)} - ${payment.payment_year || payment.paymentYear || new Date().getFullYear()}`;
+      const period = payment.period || String(payment.payment_year || payment.paymentYear || new Date().getFullYear());
+      const charges = Number(payment.charges || payment.fee || 0);
+      const amount = Number(payment.amount || 0);
+      const total = amount + charges;
+      const status = String(payment.status || 'pending').toUpperCase();
+      const statusClass = receiptStatusClass(payment.status);
+      const channel = getPaymentChannel(payment);
+      const verificationStatus = statusClass === 'confirmed' ? 'VERIFIED' : (statusClass === 'failed' ? 'NOT VERIFIED' : 'PENDING');
+
+      return `
+      <div class="receipt-shell ${isCapture ? 'a4-capture' : ''}">
+        <div class="receipt-inner">
+          <div class="receipt-header">
+            <div class="receipt-brand">
+              <img src="../assets/nba-logo.png" alt="NBA logo">
+              <div>
+                <h2>Nigerian Bar Association</h2>
+                <p>Lokoja Branch - Confluence Bar</p>
+                <p class="sub">Official Branch Dues Payment Receipt</p>
+              </div>
+            </div>
+            <div class="receipt-tag">
+              <span class="title">Receipt</span>
+              <span class="rcp-no">${esc(receiptNo)}</span>
+              <span class="status-badge ${esc(statusClass)}">${esc(status)}</span>
+            </div>
+          </div>
+
+          <div class="receipt-meta">
+            <div class="receipt-meta-item"><span class="k">Receipt No</span><span class="v">${esc(receiptNo)}</span></div>
+            <div class="receipt-meta-item"><span class="k">Payment Date</span><span class="v">${esc(paymentDateTime)}</span></div>
+            <div class="receipt-meta-item"><span class="k">Reference</span><span class="v">${esc(payment.reference || '-')}</span></div>
+            <div class="receipt-meta-item"><span class="k">Payment Channel</span><span class="v">${esc(channel)}</span></div>
+            <div class="receipt-meta-item"><span class="k">Verification</span><span class="v">${esc(verificationStatus)}</span></div>
+          </div>
+
+          <section class="receipt-section">
+            <div class="receipt-section-title">Member Information</div>
+            <div class="member-grid">
+              <div class="member-item"><span class="k">Full Name</span><span class="v">${esc(member.full_name || '-')}</span></div>
+              <div class="member-item"><span class="k">Membership ID</span><span class="v">${esc(member.membership_number || '-')}</span></div>
+              <div class="member-item"><span class="k">SCN Number</span><span class="v">${esc(member.scn_number || '-')}</span></div>
+              <div class="member-item"><span class="k">Email</span><span class="v">${esc(member.email || '-')}</span></div>
+              <div class="member-item"><span class="k">Phone Number</span><span class="v">${esc(member.phone || '-')}</span></div>
+              <div class="member-item"><span class="k">Branch</span><span class="v">${esc(member.branch || BRANCH_NAME)}</span></div>
+            </div>
+          </section>
+
+          <section class="receipt-section">
+            <div class="receipt-section-title">Payment Details</div>
+            <table class="payment-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Payment Period</th>
+                  <th>Amount (NGN)</th>
+                  <th>Charges/Fee (NGN)</th>
+                  <th>Total Paid (NGN)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${esc(description)}</td>
+                  <td>${esc(period)}</td>
+                  <td>${esc(money(amount))}</td>
+                  <td>${esc(money(charges))}</td>
+                  <td>${esc(money(total))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <div class="receipt-bottom">
+            <div class="amount-box">
+              <span class="label">Total Paid</span>
+              <span class="value">NGN ${esc(money(total))}</span>
+              <span class="status-badge ${esc(statusClass)}">${esc(status)}</span>
+            </div>
+            <div class="verification-box">
+              <span class="label">Scan To Verify</span>
+              <div id="receiptQrCode" class="receipt-qr" data-qr="${esc(buildReceiptQrValue(member, payment, receiptNo))}"></div>
+              <div class="verification-note">This receipt is valid only when payment status is confirmed in the branch payment system.</div>
+            </div>
+          </div>
+
+          <div class="receipt-footer">
+            <div class="signature-line">Authorized Signature<br>Branch Secretariat</div>
+            <div class="receipt-footer-right">
+              secretariat@nbalokoja.org<br>
+              www.nbalokoja.org<br>
+              ${esc(BRANCH_ADDRESS)}
+            </div>
+          </div>
+          <div class="receipt-disclaimer">This receipt is system-generated and does not require manual alteration.</div>
+          <div class="receipt-disclaimer">Printed on: ${esc(paymentDate)}</div>
+        </div>
+      </div>`;
+    }
+
+    function mountReceiptQr(host) {
+      if (!host || typeof QRCode === 'undefined') return;
+      const qrNode = host.querySelector('#receiptQrCode');
+      if (!qrNode) return;
+      const qrText = qrNode.getAttribute('data-qr') || '';
+      qrNode.innerHTML = '';
+      new QRCode(qrNode, {
+        text: qrText,
+        width: 52,
+        height: 52,
+        colorDark: '#111827',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    function renderReceipt(member, payment, targetId = 'paymentPreview', opts = {}) {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      target.style.display = 'block';
+      target.innerHTML = receiptHtml(member || {}, payment || {}, opts);
+      mountReceiptQr(target);
+    }
+
+    async function exportReceiptPdf(paymentId = null) {
+      const member = window.loggedMember || {};
+      const payment = (typeof paymentId === 'string' && paymentId)
+        ? loadedPayments.find((p) => p.id === paymentId)
+        : (paymentId && typeof paymentId === 'object' ? paymentId : (selectedPayment || loadedPayments[0]));
+      if (!payment) {
+        document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-warning">No receipt data available for export.</div>';
+        return;
+      }
+      if (!canDownloadReceipt(payment)) {
+        document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-warning">Receipt is available only after payment confirmation.</div>';
+        return;
+      }
+
+      const stage = document.getElementById('pdfReceiptStage');
+      const alertBox = document.getElementById('paymentAlert');
+      stage.innerHTML = receiptHtml(member, payment, { capture: true });
+      mountReceiptQr(stage);
+
+      try {
+        const target = stage.firstElementChild;
+        if (!target) throw new Error('Receipt layout could not be prepared.');
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        const canvas = await html2canvas(target, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const margin = 5;
+        const width = pageWidth - (margin * 2);
+        const height = (canvas.height * width) / canvas.width;
+        const img = canvas.toDataURL('image/png');
+        pdf.addImage(img, 'PNG', margin, margin, width, Math.min(height, pageHeight - (margin * 2)));
+        pdf.save(`NBA_Lokoja_Receipt_${payment.reference || Date.now()}.pdf`);
+      } catch (error) {
+        console.error(error);
+        alertBox.innerHTML = '<div class="alert alert-error">Unable to generate receipt PDF right now. Please try again.</div>';
+      } finally {
+        stage.innerHTML = '';
+      }
+    }
+
+    function validatePaymentForm(form) {
+      const errors = [];
+      const currentYear = new Date().getFullYear();
+      if (!form.paymentType.value) errors.push('Please select a payment type.');
+      if (!['branch_dues', 'bmf'].includes(form.paymentType.value)) errors.push('Selected payment type is not allowed.');
+      if (!form.paymentYear.value || Number(form.paymentYear.value) < 2020 || Number(form.paymentYear.value) > 2035) errors.push('Payment year must be between 2020 and 2035.');
+      if (!form.yearOfCall.value) errors.push('Year of Call is required.');
+      if (Number(form.yearOfCall.value) > currentYear) errors.push('Year of Call cannot exceed the current year.');
+      return errors;
+    }
+
+    function updatePaymentPreview() {
+      const form = document.getElementById('paymentForm');
+      const preview = document.getElementById('paymentPreview');
+      const payNowBtn = document.getElementById('payNowBtn');
+      const breakdown = document.getElementById('branchDueBreakdown');
+      const breakdownContent = document.getElementById('branchDueBreakdownContent');
+      const errors = validatePaymentForm(form);
+      const member = window.loggedMember || {};
+
+      const years = postCallYears(form.yearOfCall.value);
+      const safeYears = years < 0 ? 0 : years;
+      const amount = computeAmountByType(form.paymentType.value, member, safeYears);
+      const band = isSeniorCategory(member) ? 'Senior Advocates & Honourable Benches' : computeBand(form.paymentType.value, safeYears);
+      form.amount.value = amount ? naira(amount) : '';
+      form.postCallBand.value = `${safeYears} year(s) post-call | ${band}`;
+
+      if (form.paymentType.value === 'branch_dues') {
+        const details = computeBranchDueDetails(member, form.yearOfCall.value);
+        if (details.error) {
+          breakdown.style.display = 'block';
+          breakdownContent.innerHTML = `<span style="color:#b91c1c;">${esc(details.error)}</span>`;
+        } else {
+          breakdown.style.display = 'block';
+          breakdownContent.innerHTML = `
+            <div><strong>Member Category:</strong> ${esc(details.category)}</div>
+            <div><strong>Years Post Call:</strong> ${esc(details.years)}</div>
+            <div><strong>BPF Amount:</strong> ${esc(naira(details.bpf))}</div>
+            <div><strong>Branch Due (50% of BPF):</strong> ${esc(naira(details.branchDue))}</div>
+          `;
+        }
+      } else {
+        breakdown.style.display = 'none';
+        breakdownContent.innerHTML = '';
+      }
+
+      if (errors.length || amount < 0) {
+        preview.style.display = 'block';
+        preview.innerHTML = `<div style="padding:1rem;color:#b91c1c;">${errors.map(esc).join('<br>')}</div>`;
+        selectedPayment = null;
+        payNowBtn.disabled = true;
+        payNowBtn.style.display = 'none';
+        return;
+      }
+
+      selectedPayment = {
+        paymentType: form.paymentType.value,
+        amount: Number(amount),
+        paymentYear: Number(form.paymentYear.value),
+        yearOfCall: Number(form.yearOfCall.value),
+        description: `${paymentTypeLabel(form.paymentType.value)} - ${form.paymentYear.value} (${band})`,
+        reference: `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+        method: 'Paystack',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        post_call_years: years
+      };
+
+      renderReceipt(member, selectedPayment, 'paymentPreview');
+      payNowBtn.disabled = false;
+      payNowBtn.style.display = 'inline-flex';
+    }
+
+    async function renderPaymentHistory(rows) {
+      loadedPayments = rows;
+      const holder = document.getElementById('paymentHistory');
+      if (!rows.length) {
+        holder.innerHTML = '<div class="card" style="padding:1rem;">No payment records yet.</div>';
+        return;
+      }
+
+      holder.innerHTML = `
+        <div class="table-wrap"><table class="table"><thead><tr><th>Receipt No</th><th>Reference</th><th>Description</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>${rows.map((p, idx) => `
+          <tr>
+            <td>${esc(buildReceiptNumber(p.reference))}</td>
+            <td>${esc(p.reference || '-')}</td>
+            <td>${esc(p.description || paymentTypeLabel(p.payment_type || p.type))}</td>
+            <td>NGN ${esc(money(p.amount || 0))}</td>
+            <td>${esc((p.status || 'pending').toUpperCase())}</td>
+            <td>${esc(p.created_at ? new Date(p.created_at).toLocaleDateString() : '-')}</td>
+            <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm viewReceiptBtn" data-index="${idx}">View</button>
+              <button type="button" class="btn btn-primary btn-sm downloadReceiptBtn" data-index="${idx}" ${canDownloadReceipt(p) ? '' : 'disabled'}>${canDownloadReceipt(p) ? 'Download PDF' : 'Awaiting Approval'}</button>
+            </td>
+          </tr>`).join('')}</tbody></table></div>
+      `;
+
+      holder.querySelectorAll('.downloadReceiptBtn').forEach((button) => {
+        button.addEventListener('click', () => exportReceiptPdf(rows[Number(button.dataset.index)]));
+      });
+      holder.querySelectorAll('.viewReceiptBtn').forEach((button) => {
+        button.addEventListener('click', () => {
+          const payment = rows[Number(button.dataset.index)];
+          renderReceipt(window.loggedMember || {}, payment, 'paymentPreview');
+          const preview = document.getElementById('paymentPreview');
+          preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
+    async function loadPayments() {
+      const holder = document.getElementById('paymentHistory');
+      const session = await NBAAuth.getSession();
+      const user = session?.data?.session?.user;
+      if (!user?.id) {
+        location.href = 'login.html';
+        return;
+      }
+      currentUserId = user.id;
+      const [{ data: memberData }, { data, error }] = await Promise.all([
+        NBADB.getMember(user.id),
+        NBADB.listPayments(user.id)
+      ]);
+      window.loggedMember = memberData || {};
+      const form = document.getElementById('paymentForm');
+      if (window.loggedMember.year_called) {
+        form.yearOfCall.value = window.loggedMember.year_called;
+      }
+      updatePaymentPreview();
+      if (error) {
+        holder.innerHTML = '<div class="alert alert-error">Unable to load payment history.</div>';
+        return;
+      }
+      renderPaymentHistory(Array.isArray(data) ? data : []);
+      updateBankTransferUiState();
+    }
+
+    async function createPaymentRecord(userId, paymentData) {
+      return NBADB.recordPayment(userId, {
+        reference: paymentData.reference,
+        description: paymentData.description,
+        amount: paymentData.amount,
+        payment_type: paymentData.paymentType,
+        payment_year: paymentData.paymentYear,
+        status: 'pending',
+        method: 'Paystack',
+        metadata: {
+          post_call_years: paymentData.post_call_years,
+          payment_band: paymentData.description,
+          year_of_call: paymentData.yearOfCall
+        },
+        user_id: userId
+      });
+    }
+
+    async function createBankTransferPayment(member, amount, period) {
+      const sessionResult = await NBAAuth.getSession();
+      const user = sessionResult?.data?.session?.user;
+      if (!user?.id) throw new Error('User is not logged in.');
+
+      const cleanAmount = Number(amount);
+      if (!cleanAmount || cleanAmount <= 0) throw new Error('Invalid payment amount.');
+
+      const paymentReference = `BANK-${Date.now()}-${user.id.slice(0, 8).toUpperCase()}`;
+      const payload = {
+        member_id: user.id,
+        user_id: user.id,
+        amount: cleanAmount,
+        payment_type: 'branch_due',
+        payment_method: 'bank_transfer',
+        method: 'bank_transfer',
+        payment_status: 'pending_review',
+        status: 'pending_review',
+        payment_period: String(period || new Date().getFullYear()),
+        payment_year: Number(period) || new Date().getFullYear(),
+        payment_reference: paymentReference,
+        reference: paymentReference,
+        payment_channel: 'bank_transfer',
+        description: `Bank Transfer - NBA Lokoja Branch Due (${period || new Date().getFullYear()})`
+      };
+
+      console.log('Creating payment payload:', payload);
+      const { data, error } = await supabaseClient
+        .from('payments')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Payment creation failed:', error);
+        throw new Error(error.message || 'Unable to create payment record.');
+      }
+      return data;
+    }
+
+    async function uploadPaymentProof(paymentId, file) {
+      const sessionResult = await NBAAuth.getSession();
+      const user = sessionResult?.data?.session?.user;
+      if (!user?.id) throw new Error('User is not logged in.');
+      if (!paymentId) throw new Error('Missing payment id.');
+      if (!file) throw new Error('No proof file selected.');
+
+      const payment = loadedPayments.find((p) => p.id === paymentId);
+      const reference = payment?.payment_reference || payment?.reference || `PAY-${Date.now()}`;
+      const upload = await NBAStorage.uploadPaymentProof(user.id, reference, file);
+      if (upload.error) {
+        console.error('Proof upload failed:', upload.error);
+        throw new Error(upload.error.message || 'Unable to upload payment proof.');
+      }
+
+      const { data, error } = await supabaseClient
+        .from('payments')
+        .update({
+          proof_file_path: upload.data.path,
+          proof_url: upload.data.signedUrl,
+          payment_status: 'pending_review',
+          status: 'pending_review',
+          rejection_reason: null
+        })
+        .eq('id', paymentId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Payment proof update failed:', error);
+        throw new Error(error.message || 'Unable to update payment proof details.');
+      }
+      return data;
+    }
+
+    async function submitPaymentForReview(paymentId) {
+      const { data, error } = await supabaseClient
+        .from('payments')
+        .update({ payment_status: 'pending_review', status: 'pending_review' })
+        .eq('id', paymentId)
+        .select()
+        .single();
+      if (error) {
+        console.error('Submit for review failed:', error);
+        throw new Error(error.message || 'Unable to submit payment for review.');
+      }
+      return data;
+    }
+
+    async function submitBankTransferProof(member, amount, period, file) {
+      const payment = await createBankTransferPayment(member, amount, period);
+      await uploadPaymentProof(payment.id, file);
+      await submitPaymentForReview(payment.id);
+      return payment;
+    }
+
+    async function loadMemberPayments() {
+      await loadPayments();
+      return loadedPayments;
+    }
+
+    function updateBankTransferUiState() {
+      const badge = document.getElementById('bankTransferStatusBadge');
+      const msg = document.getElementById('bankTransferMessage');
+      const latestTransfer = loadedPayments.find((p) => String(p.payment_method || p.method || '').toLowerCase() === 'bank_transfer');
+      if (!latestTransfer) {
+        badge.style.display = 'none';
+        msg.textContent = '';
+        return;
+      }
+      const status = String(latestTransfer.status || 'pending').toLowerCase();
+      badge.style.display = 'inline-flex';
+      badge.className = 'badge';
+      if (status === 'pending_review') {
+        badge.classList.add('badge-pending');
+        badge.textContent = 'Pending Review';
+        msg.textContent = 'Your payment proof is awaiting Treasurer/Admin confirmation.';
+      } else if (status === 'paid' || status === 'approved' || status === 'confirmed') {
+        badge.classList.add('badge-active');
+        badge.textContent = 'Approved';
+        msg.textContent = 'Payment approved. You can now download your official receipt.';
+      } else if (status === 'rejected') {
+        badge.classList.add('badge-suspended');
+        badge.textContent = 'Rejected';
+        msg.textContent = latestTransfer.rejection_reason || 'Payment proof was rejected. Please re-upload clear proof.';
+      } else {
+        badge.classList.add('badge-pending');
+        badge.textContent = status.replace('_', ' ');
+        msg.textContent = '';
+      }
+    }
+
+    async function handlePaystackSuccess(paymentId, gatewayResponse) {
+      const { error } = await NBADB.updatePaymentStatus(paymentId, {
+        status: 'confirmed',
+        paid_at: new Date().toISOString(),
+        metadata: {
+          gateway: 'paystack',
+          response: gatewayResponse || null
+        }
+      });
+      if (error) console.warn('Failed to update status:', error.message || error);
+      await loadPayments();
+      document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-success">Payment confirmed. Your receipt is now available for PDF download.</div>';
+    }
+
+    async function markPaymentFailed(paymentId, reason) {
+      if (!paymentId) return;
+      await NBADB.updatePaymentStatus(paymentId, {
+        status: 'failed',
+        metadata: {
+          gateway: 'paystack',
+          failure_reason: reason || 'Checkout cancelled or failed'
+        }
+      });
+      await loadPayments();
+    }
+
+    function payWithPaystack(paymentRecordId, payment, member) {
+      const handler = window.PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: member.email,
+        amount: Math.round(payment.amount * 100),
+        currency: 'NGN',
+        ref: payment.reference,
+        metadata: {
+          custom_fields: [
+            { display_name: 'Member Name', variable_name: 'member_name', value: member.full_name || '' },
+            { display_name: 'Branch', variable_name: 'branch', value: BRANCH_NAME }
+          ]
+        },
+        callback: async (response) => {
+          if (response.status === 'success' || response.message === 'Approved') {
+            await handlePaystackSuccess(paymentRecordId, response);
+          } else {
+            await markPaymentFailed(paymentRecordId, response.message || 'Payment not approved');
+            document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-error">Payment was not completed. Please try again.</div>';
+          }
+        },
+        onClose: async () => {
+          await markPaymentFailed(paymentRecordId, 'User closed checkout');
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-warning">Payment process was cancelled. You can continue anytime.</div>';
+        }
+      });
+      handler.openIframe();
+    }
+
+    async function downloadReceiptPdf(payment) { return exportReceiptPdf(payment); }
+
+    async function initPaymentWorkflow() {
+      const form = document.getElementById('paymentForm');
+      const previewBtn = document.getElementById('previewPaymentBtn');
+      const payNowBtn = document.getElementById('payNowBtn');
+      const submitBankTransferBtn = document.getElementById('submitBankTransferBtn');
+      const bankProofInput = document.getElementById('bankProofInput');
+
+      previewBtn.addEventListener('click', updatePaymentPreview);
+      ['paymentType', 'paymentYear', 'yearOfCall'].forEach((name) => {
+        form[name].addEventListener('input', updatePaymentPreview);
+      });
+
+      payNowBtn.addEventListener('click', async () => {
+        const session = await NBAAuth.getSession();
+        const user = session?.data?.session?.user;
+        if (!user?.id) {
+          location.href = 'login.html';
+          return;
+        }
+
+        if (!PAYSTACK_PUBLIC_KEY || PAYSTACK_PUBLIC_KEY.includes('xxxxxxxx')) {
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-error">Paystack public key is not configured. Set VITE_PAYSTACK_PUBLIC_KEY.</div>';
+          return;
+        }
+
+        if (!selectedPayment) {
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-error">Preview a valid receipt before continuing.</div>';
+          return;
+        }
+
+        document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-info">Preparing secure checkout...</div>';
+        const paymentRecord = await createPaymentRecord(user.id, selectedPayment);
+        if (paymentRecord.error) {
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-error">Unable to start payment. Please try again.</div>';
+          return;
+        }
+
+        const paymentId = Array.isArray(paymentRecord.data) ? paymentRecord.data[0]?.id : paymentRecord.data?.id;
+        payWithPaystack(paymentId, selectedPayment, window.loggedMember || {});
+      });
+
+      submitBankTransferBtn.addEventListener('click', async () => {
+        const session = await NBAAuth.getSession();
+        const user = session?.data?.session?.user;
+        if (!user?.id) {
+          location.href = 'login.html';
+          return;
+        }
+        currentUserId = user.id;
+        const file = bankProofInput.files?.[0];
+        if (!file) {
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-error">Please upload your transfer proof file.</div>';
+          return;
+        }
+        const selectedType = form.paymentType.value || 'branch_dues';
+        const selectedPeriod = form.paymentYear.value || new Date().getFullYear();
+        const years = postCallYears(form.yearOfCall.value || window.loggedMember?.year_called);
+        const amount = computeAmountByType(selectedType, window.loggedMember || {}, Math.max(0, years));
+        if (!amount || amount <= 0) {
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-error">Unable to compute payment amount. Complete payment form first.</div>';
+          return;
+        }
+        document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-info">Submitting bank transfer for review...</div>';
+        submitBankTransferBtn.disabled = true;
+        try {
+          await submitBankTransferProof({ id: user.id }, amount, selectedPeriod, file);
+          document.getElementById('paymentAlert').innerHTML = '<div class="alert alert-success">Submitted successfully. Your payment is now pending review.</div>';
+          bankProofInput.value = '';
+          await loadMemberPayments();
+        } catch (error) {
+          console.error('Bank transfer submission error:', error);
+          document.getElementById('paymentAlert').innerHTML = `
+            <div class="alert alert-error">
+              ${esc(error.message || 'Unable to create payment record.')}
+            </div>
+          `;
+        } finally {
+          submitBankTransferBtn.disabled = false;
+        }
+      });
+    }
+
+    loadPayments();
+    initPaymentWorkflow();
+  </script>
+</body>
+</html>

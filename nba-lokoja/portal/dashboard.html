@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - NBA Lokoja Member Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div id="dashboardAlert"></div>
+
+        <div class="welcome-banner">
+          <h2>Welcome back, <span id="firstName">Counsel</span></h2>
+          <p>Manage your membership, stay updated on events, and access branch updates all in one organized dashboard..</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card navy"><div class="stat-ico"><i class="fa-solid fa-id-badge" aria-hidden="true"></i></div><span class="lbl">Membership Status</span><span class="num" id="membershipStatus">PENDING</span><span class="delta" id="memberRole">member</span></div>
+          <div class="stat-card gold"><div class="stat-ico"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i></div><span class="lbl">SCN Number</span><span class="num" id="memberScn" style="font-size:1.1rem;">-</span><span class="delta" id="yearCalled">Year called: -</span></div>
+          <div class="stat-card green"><div class="stat-ico"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></div><span class="lbl">Upcoming Events</span><span class="num" id="eventCount">0</span><span class="delta">Scheduled events</span></div>
+          <div class="stat-card red"><div class="stat-ico"><i class="fa-solid fa-newspaper" aria-hidden="true"></i></div><span class="lbl">Latest News</span><span class="num" id="newsCount">0</span><span class="delta">Published updates</span></div>
+        </div>
+
+        <div class="dashboard-layout">
+          <div class="panel">
+            <div class="panel-head"><h3>Upcoming Events</h3><a href="events.html" class="btn btn-outline btn-sm">View Calendar</a></div>
+            <div class="panel-body"><div id="upcomingEventsList" class="dashboard-list"></div></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Latest Branch News</h3><a href="../pages/news.html" class="btn btn-outline btn-sm">View News</a></div>
+            <div class="panel-body"><div id="latestNewsList" class="dashboard-list"></div></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Your Digital ID</h3></div>
+            <div class="panel-body">
+              <div class="id-card" style="margin:0 auto;">
+                <div class="id-card-head">
+                  <div class="logo-mark"></div>
+                  <div><h4>NBA Lokoja</h4><div class="sub">MEMBER ID CARD</div></div>
+                </div>
+                <div class="id-card-body">
+                  <div style="position:relative;">
+                    <img id="dashIdPhoto" alt="Member passport" style="display:none;width:80px;height:90px;border-radius:8px;object-fit:cover;border:3px solid rgba(255,255,255,0.15);">
+                    <div class="id-photo" id="idInitials">NB</div>
+                  </div>
+                  <div>
+                    <div class="id-name" id="idName">Member Name</div>
+                    <div class="id-info"><span>SCN:</span> <span id="idScn">-</span><br><span>Status:</span> <span id="idStatus">Pending</span><br><span>Year Called:</span> <span id="idYearCalled">-</span></div>
+                  </div>
+                </div>
+                <div class="id-card-foot"><span>Member Portal</span><span>NBA-LOK</span></div>
+              </div>
+              <a href="id-card.html" class="btn btn-outline btn-block mt-2">Open Full ID Card</a>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Quick Actions</h3></div>
+            <div class="panel-body dashboard-actions">
+              <a href="profile.html" class="btn btn-primary"><i class="fa-solid fa-user" aria-hidden="true"></i> Update Profile</a>
+              <a href="dues.html" class="btn btn-outline"><i class="fa-solid fa-credit-card" aria-hidden="true"></i> Pay Dues</a>
+              <a href="cle.html" class="btn btn-outline"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> CLE Courses</a>
+              <a href="resources.html" class="btn btn-outline"><i class="fa-solid fa-book" aria-hidden="true"></i> Resource Library</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/portal-shared.js"></script>
+  <script>
+    renderPortal('dashboard', 'Dashboard');
+
+    function esc(v) {
+      return String(v || '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function fmtDate(input) {
+      if (!input) return 'Date not set';
+      const d = new Date(input);
+      if (Number.isNaN(d.getTime())) return 'Date not set';
+      return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    async function loadDashboard() {
+      const alertBox = document.getElementById('dashboardAlert');
+      const sessionResult = await NBAAuth.getSession();
+      const user = sessionResult?.data?.session?.user;
+      if (!user?.id) {
+        location.href = 'login.html';
+        return;
+      }
+
+      const [{ data: member, error: memberError }, { data: events }, { data: news }] = await Promise.all([
+        NBADB.getMember(user.id),
+        NBADB.listEvents(),
+        NBADB.listNews({ publishedOnly: true })
+      ]);
+
+      if (memberError || !member) {
+        alertBox.innerHTML = '<div class="alert alert-error">Unable to load your profile. Please sign in again.</div>';
+        await NBAAuth.signOut();
+        setTimeout(() => { location.href = 'login.html'; }, 1200);
+        return;
+      }
+
+      const names = String(member.full_name || 'Member').split(' ');
+      const firstName = names[0] || 'Member';
+      const initials = names.slice(0, 2).map((n) => n[0]).join('').toUpperCase();
+
+      document.getElementById('firstName').textContent = firstName;
+      document.getElementById('membershipStatus').textContent = String(member.status || 'pending').toUpperCase();
+      document.getElementById('memberRole').textContent = String(member.role || 'member').replace('_', ' ');
+      document.getElementById('memberScn').textContent = member.scn_number || 'Not set';
+      document.getElementById('yearCalled').textContent = 'Year called: ' + (member.year_called || '-');
+      document.getElementById('idInitials').textContent = initials || 'NB';
+      document.getElementById('idName').textContent = member.full_name || 'Member Name';
+      document.getElementById('idScn').textContent = member.scn_number || '-';
+      document.getElementById('idStatus').textContent = String(member.status || 'pending');
+      document.getElementById('idYearCalled').textContent = member.year_called || '-';
+      if (member.photo_url) {
+        const dashImg = document.getElementById('dashIdPhoto');
+        dashImg.src = member.photo_url;
+        dashImg.style.display = 'block';
+        document.getElementById('idInitials').style.display = 'none';
+      }
+
+      const now = new Date();
+      const upcoming = Array.isArray(events)
+        ? events
+          .filter((eventItem) => {
+            if (!eventItem?.event_date) return false;
+            const eventDate = new Date(eventItem.event_date);
+            return !Number.isNaN(eventDate.getTime()) && eventDate >= new Date(now.toDateString());
+          })
+          .slice(0, 4)
+        : [];
+      const latest = Array.isArray(news) ? news.slice(0, 4) : [];
+
+      document.getElementById('eventCount').textContent = String(upcoming.length);
+      document.getElementById('newsCount').textContent = String(latest.length);
+
+      document.getElementById('upcomingEventsList').innerHTML = upcoming.length
+        ? upcoming.map((e) => `
+            <article class="dashboard-item">
+              <div>
+                <h4>${esc(e.title)}</h4>
+                <p>${fmtDate(e.event_date)}${e.location ? ' - ' + esc(e.location) : ''}</p>
+              </div>
+              <a class="btn btn-outline btn-sm" href="events.html">Details</a>
+            </article>
+          `).join('')
+        : '<p style="margin:0;color:var(--gray);">No upcoming events yet.</p>';
+
+      document.getElementById('latestNewsList').innerHTML = latest.length
+        ? latest.map((n) => `
+            <article class="dashboard-item">
+              <div>
+                <h4>${esc(n.title)}</h4>
+                <p>${fmtDate(n.published_at)}${n.category ? ' - ' + esc(n.category) : ''}</p>
+              </div>
+              <a class="btn btn-outline btn-sm" href="../pages/news.html">Read</a>
+            </article>
+          `).join('')
+        : '<p style="margin:0;color:var(--gray);">No news has been published yet.</p>';
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

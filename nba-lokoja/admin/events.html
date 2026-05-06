@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Management - NBA Lokoja Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Create Upcoming Event</h3></div>
+            <div class="panel-body">
+              <div id="eventAlert"></div>
+              <form id="eventForm" data-validate>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Title *</label><input class="form-control" name="title" required></div>
+                  <div class="form-group"><label class="form-label">Category</label><input class="form-control" name="category" placeholder="CLE"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-control" name="event_date" required></div>
+                  <div class="form-group"><label class="form-label">Time</label><input type="time" class="form-control" name="event_time"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Location</label><input class="form-control" name="location"></div>
+                <div class="form-group"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3"></textarea></div>
+                <button class="btn btn-primary" type="submit">Create Event</button>
+              </form>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Existing Events</h3></div>
+            <div class="panel-body" id="eventList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin-shared.js"></script>
+  <script>
+    renderAdmin('events', 'Event Management');
+
+    function esc(v) { return String(v || '').replace(/[&<>\"']/g, (ch) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[ch])); }
+
+    async function loadEvents() {
+      const holder = document.getElementById('eventList');
+      const { data } = await NBADB.listEvents();
+      const rows = Array.isArray(data) ? data : [];
+      holder.innerHTML = rows.length ? rows.map((e) => `<div style="padding:0.8rem;background:var(--off-white);border-radius:10px;margin-bottom:0.6rem;"><h5 style="margin:0 0 0.25rem 0;">${esc(e.title)}</h5><div style="font-size:0.8rem;color:var(--gray);">${esc(e.event_date)} · ${esc(e.location || 'Venue TBA')}</div></div>`).join('') : '<div class="card" style="padding:1rem;">No events created yet.</div>';
+    }
+
+    document.getElementById('eventForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const alertBox = document.getElementById('eventAlert');
+      const session = await NBAAuth.getSession();
+      const adminId = session?.data?.session?.user?.id || null;
+      const payload = {
+        title: f.title.value.trim(),
+        category: f.category.value.trim(),
+        event_date: f.event_date.value,
+        event_time: f.event_time.value || null,
+        location: f.location.value.trim(),
+        description: f.description.value.trim(),
+        created_by: adminId,
+        is_published: true
+      };
+      const { error } = await NBADB.createEvent(payload);
+      if (error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + (error.message || 'Could not create event.') + '</div>';
+        return;
+      }
+      alertBox.innerHTML = '<div class="alert alert-success">Event created successfully.</div>';
+      f.reset();
+      loadEvents();
+    });
+
+    loadEvents();
+  </script>
+</body>
+</html>

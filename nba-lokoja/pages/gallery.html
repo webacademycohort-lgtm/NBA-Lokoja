@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gallery — NBA Lokoja</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .gallery-item { aspect-ratio: 1; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; transition: transform 0.3s; }
+    .gallery-item:hover { transform: scale(1.02); }
+    .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s; }
+    .gallery-item:hover img { transform: scale(1.1); }
+    .gallery-item::after { content: attr(data-caption); position: absolute; bottom: 0; left: 0; right: 0; padding: 1rem; background: linear-gradient(transparent, rgba(10,31,68,0.9)); color: white; font-size: 0.85rem; font-weight: 500; opacity: 0; transition: opacity 0.3s; }
+    .gallery-item:hover::after { opacity: 1; }
+    .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2rem; }
+    .filter-btn { padding: 0.5rem 1.25rem; border: 1px solid var(--light-gray); background: white; border-radius: 50px; font-size: 0.85rem; cursor: pointer; transition: var(--transition); font-weight: 500; }
+    .filter-btn:hover, .filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+  </style>
+  <script>const BASE = '../';</script>
+</head>
+<body>
+  <div data-include="header"></div>
+
+  <section class="page-banner">
+    <div class="container">
+      <h1>Gallery</h1>
+      <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><span>Gallery</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head fade-in">
+        <span class="section-eyebrow">Memories</span>
+        <h2>Through the Lens of the Bar</h2>
+        <p>Highlights from branch events, dinners, ceremonies and community engagement.</p>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filter-btn active">All</button>
+        <button class="filter-btn">Law Week</button>
+        <button class="filter-btn">CLE Sessions</button>
+        <button class="filter-btn">Bar–Bench</button>
+        <button class="filter-btn">Community</button>
+      </div>
+
+      <div class="gallery-grid">
+        <div class="gallery-item fade-in" data-caption="Annual Law Week 2025"><img src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Bar–Bench Forum"><img src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="CLE Workshop"><img src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Annual Dinner"><img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Welfare Outreach"><img src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Award Ceremony"><img src="https://images.unsplash.com/photo-1569163139394-de4e1c00cf52?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Confluence View"><img src="https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Young Lawyers' Forum"><img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Court Visit"><img src="https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Inauguration 2026"><img src="https://images.unsplash.com/photo-1589994965851-a8f479c573a9?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Press Conference"><img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&q=80" alt=""></div>
+        <div class="gallery-item fade-in" data-caption="Mentorship Programme"><img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=600&q=80" alt=""></div>
+      </div>
+    </div>
+  </section>
+
+  <div data-include="footer"></div>
+  <script src="../js/main.js"></script>
+  <script src="../js/partials.js"></script>
+  <script>
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }));
+  </script>
+</body>
+</html>

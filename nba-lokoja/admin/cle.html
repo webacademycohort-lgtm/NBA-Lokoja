@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLE Management - NBA Lokoja Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-include="sidebar"></div>
+    <div class="portal-main">
+      <div data-include="topbar"></div>
+      <div class="portal-content">
+        <div class="panel-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Create CLE Course</h3></div>
+            <div class="panel-body">
+              <div id="cleAlert"></div>
+              <form id="cleForm" data-validate>
+                <div class="form-group"><label class="form-label">Title *</label><input name="title" class="form-control" required></div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Date</label><input type="date" name="course_date" class="form-control"></div>
+                  <div class="form-group"><label class="form-label">Hours</label><input type="number" name="cle_hours" class="form-control" min="0"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Category</label><input name="category" class="form-control"></div>
+                  <div class="form-group"><label class="form-label">Format</label><input name="format" class="form-control" placeholder="In-person"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Description</label><textarea name="description" class="form-control" rows="3"></textarea></div>
+                <button class="btn btn-primary" type="submit">Create Course</button>
+              </form>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Current CLE Courses</h3></div>
+            <div class="panel-body" id="courseList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin-shared.js"></script>
+  <script>
+    renderAdmin('cle', 'CLE Course Management');
+    function esc(v){return String(v||'').replace(/[&<>\"']/g,(ch)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));}
+
+    async function loadCourses(){
+      const holder = document.getElementById('courseList');
+      const { data } = await NBADB.listCourses();
+      const rows = Array.isArray(data) ? data : [];
+      holder.innerHTML = rows.length ? rows.map((c)=>`<div style="padding:0.8rem;background:var(--off-white);border-radius:10px;margin-bottom:0.6rem;"><h5 style="margin:0 0 0.25rem 0;">${esc(c.title)}</h5><div style="font-size:0.8rem;color:var(--gray);">${esc(c.course_date||'Date TBA')} · ${esc(c.cle_hours||0)} hour(s)</div></div>`).join('') : '<div class="card" style="padding:1rem;">No CLE courses created yet.</div>';
+    }
+
+    document.getElementById('cleForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const f = e.target;
+      const alertBox = document.getElementById('cleAlert');
+      const payload = {
+        title: f.title.value.trim(),
+        description: f.description.value.trim(),
+        category: f.category.value.trim(),
+        format: f.format.value.trim(),
+        course_date: f.course_date.value || null,
+        cle_hours: Number(f.cle_hours.value || 0),
+        is_open: true
+      };
+      const { error } = await NBADB.createCourse(payload);
+      if (error) {
+        alertBox.innerHTML = '<div class="alert alert-error">' + (error.message || 'Could not create course.') + '</div>';
+        return;
+      }
+      alertBox.innerHTML = '<div class="alert alert-success">Course created successfully.</div>';
+      f.reset();
+      loadCourses();
+    });
+
+    loadCourses();
+  </script>
+</body>
+</html>
